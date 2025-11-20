@@ -1,0 +1,89 @@
+from django.db import models
+from partners.models import Partner
+from users.models import User
+
+
+class SoilType(models.Model):
+    """Tipos de suelo"""
+    name = models.CharField(max_length=100, unique=True, verbose_name='Nombre')
+    description = models.TextField(blank=True, verbose_name='Descripción')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
+
+    class Meta:
+        db_table = 'soil_types'
+        verbose_name = 'Tipo de Suelo'
+        verbose_name_plural = 'Tipos de Suelo'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Crop(models.Model):
+    """Cultivos"""
+    name = models.CharField(max_length=100, unique=True, verbose_name='Nombre')
+    scientific_name = models.CharField(max_length=200, blank=True, verbose_name='Nombre científico')
+    description = models.TextField(blank=True, verbose_name='Descripción')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
+
+    class Meta:
+        db_table = 'crops'
+        verbose_name = 'Cultivo'
+        verbose_name_plural = 'Cultivos'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Parcel(models.Model):
+    """Parcelas de los socios"""
+    ACTIVE = 'ACTIVE'
+    INACTIVE = 'INACTIVE'
+    
+    STATUS_CHOICES = [
+        (ACTIVE, 'Activa'),
+        (INACTIVE, 'Inactiva'),
+    ]
+    
+    # Información básica
+    code = models.CharField(max_length=50, unique=True, verbose_name='Código de parcela')
+    name = models.CharField(max_length=200, verbose_name='Nombre')
+    surface = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Superficie (hectáreas)')
+    
+    # Ubicación
+    location = models.TextField(verbose_name='Ubicación')
+    latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True, verbose_name='Latitud')
+    longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True, verbose_name='Longitud')
+    
+    # Relaciones
+    partner = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name='parcels', verbose_name='Socio')
+    soil_type = models.ForeignKey(SoilType, on_delete=models.PROTECT, related_name='parcels', verbose_name='Tipo de suelo')
+    current_crop = models.ForeignKey(Crop, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='parcels', verbose_name='Cultivo actual')
+    
+    # Estado y metadatos
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=ACTIVE, verbose_name='Estado')
+    notes = models.TextField(blank=True, verbose_name='Notas')
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='created_parcels', verbose_name='Creado por')
+
+    class Meta:
+        db_table = 'parcels'
+        verbose_name = 'Parcela'
+        verbose_name_plural = 'Parcelas'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['code']),
+            models.Index(fields=['partner']),
+        ]
+
+    def __str__(self):
+        return f"{self.code} - {self.name} ({self.partner.full_name})"
