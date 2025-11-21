@@ -1,0 +1,106 @@
+from django.db import models
+from campaigns.models import Campaign
+from parcels.models import Parcel
+from users.models import User
+
+
+class ActivityType(models.Model):
+    """Tipos de labores agrícolas"""
+    SOWING = 'SOWING'
+    IRRIGATION = 'IRRIGATION'
+    FERTILIZATION = 'FERTILIZATION'
+    PEST_CONTROL = 'PEST_CONTROL'
+    HARVEST = 'HARVEST'
+    OTHER = 'OTHER'
+    
+    TYPE_CHOICES = [
+        (SOWING, 'Siembra'),
+        (IRRIGATION, 'Riego'),
+        (FERTILIZATION, 'Fertilización'),
+        (PEST_CONTROL, 'Control de Plagas'),
+        (HARVEST, 'Cosecha'),
+        (OTHER, 'Otra'),
+    ]
+    
+    name = models.CharField(max_length=50, choices=TYPE_CHOICES, unique=True, verbose_name='Tipo')
+    description = models.TextField(blank=True, verbose_name='Descripción')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
+
+    class Meta:
+        db_table = 'activity_types'
+        verbose_name = 'Tipo de Labor'
+        verbose_name_plural = 'Tipos de Labores'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.get_name_display()
+
+
+class FarmActivity(models.Model):
+    """Labores agrícolas realizadas"""
+    PENDING = 'PENDING'
+    IN_PROGRESS = 'IN_PROGRESS'
+    COMPLETED = 'COMPLETED'
+    CANCELLED = 'CANCELLED'
+    
+    STATUS_CHOICES = [
+        (PENDING, 'Pendiente'),
+        (IN_PROGRESS, 'En Progreso'),
+        (COMPLETED, 'Completada'),
+        (CANCELLED, 'Cancelada'),
+    ]
+    
+    # Información básica
+    activity_type = models.ForeignKey(ActivityType, on_delete=models.PROTECT, 
+                                      related_name='activities', verbose_name='Tipo de labor')
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, 
+                                 related_name='activities', verbose_name='Campaña')
+    parcel = models.ForeignKey(Parcel, on_delete=models.CASCADE, 
+                               related_name='activities', verbose_name='Parcela')
+    
+    # Fechas
+    scheduled_date = models.DateField(verbose_name='Fecha programada')
+    actual_date = models.DateField(null=True, blank=True, verbose_name='Fecha real')
+    
+    # Detalles
+    description = models.TextField(verbose_name='Descripción')
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                   verbose_name='Cantidad (kg/l)')
+    area_covered = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                       verbose_name='Área cubierta (ha)')
+    
+    # Personal
+    workers_count = models.IntegerField(default=1, verbose_name='Número de trabajadores')
+    hours_worked = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                       verbose_name='Horas trabajadas')
+    
+    # Estado
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING, verbose_name='Estado')
+    
+    # Observaciones
+    observations = models.TextField(blank=True, verbose_name='Observaciones')
+    weather_conditions = models.CharField(max_length=200, blank=True, verbose_name='Condiciones climáticas')
+    
+    # Metadatos
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='created_activities', verbose_name='Creado por')
+    completed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='completed_activities', verbose_name='Completado por')
+
+    class Meta:
+        db_table = 'farm_activities'
+        verbose_name = 'Labor Agrícola'
+        verbose_name_plural = 'Labores Agrícolas'
+        ordering = ['-scheduled_date']
+        indexes = [
+            models.Index(fields=['campaign', 'scheduled_date']),
+            models.Index(fields=['parcel', 'activity_type']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"{self.activity_type.get_name_display()} - {self.parcel.code} ({self.scheduled_date})"

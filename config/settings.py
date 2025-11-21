@@ -49,11 +49,16 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    # Apps del proyecto
+    # Apps del proyecto - Sprint 1
     'users',
     'partners',
     'parcels',
     'audit',
+    # Apps del proyecto - Sprint 2
+    'campaigns',
+    'farm_activities',
+    'inventory',
+    'production',
 ]
 
 MIDDLEWARE = [

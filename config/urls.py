@@ -9,8 +9,14 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Sprint 1
     path('api/auth/', include('users.urls')),
     path('api/partners/', include('partners.urls')),
     path('api/parcels/', include('parcels.urls')),
     path('api/audit/', include('audit.urls')),
+    # Sprint 2
+    path('api/campaigns/', include('campaigns.urls')),
+    path('api/farm-activities/', include('farm_activities.urls')),
+    path('api/inventory/', include('inventory.urls')),
+    path('api/production/', include('production.urls')),
 ]
