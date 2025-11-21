@@ -1,0 +1,258 @@
+from django.db import models
+from django.core.validators import MinValueValidator
+from partners.models import Partner
+from campaigns.models import Campaign
+from production.models import HarvestedProduct
+from users.models import User
+
+
+class PaymentMethod(models.Model):
+    """Métodos de pago"""
+    CASH = 'CASH'
+    BANK_TRANSFER = 'BANK_TRANSFER'
+    CHECK = 'CHECK'
+    CREDIT_CARD = 'CREDIT_CARD'
+    DEBIT_CARD = 'DEBIT_CARD'
+    QR = 'QR'
+    OTHER = 'OTHER'
+    
+    METHOD_CHOICES = [
+        (CASH, 'Efectivo'),
+        (BANK_TRANSFER, 'Transferencia Bancaria'),
+        (CHECK, 'Cheque'),
+        (CREDIT_CARD, 'Tarjeta de Crédito'),
+        (DEBIT_CARD, 'Tarjeta de Débito'),
+        (QR, 'Código QR'),
+        (OTHER, 'Otro'),
+    ]
+    
+    name = models.CharField(max_length=50, choices=METHOD_CHOICES, unique=True, verbose_name='Método')
+    description = models.TextField(blank=True, verbose_name='Descripción')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    requires_reference = models.BooleanField(default=False, verbose_name='Requiere referencia')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
+
+    class Meta:
+        db_table = 'payment_methods'
+        verbose_name = 'Método de Pago'
+        verbose_name_plural = 'Métodos de Pago'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.get_name_display()
+
+
+class Customer(models.Model):
+    """Clientes (pueden ser socios o externos)"""
+    # Información básica
+    name = models.CharField(max_length=200, verbose_name='Nombre/Razón Social')
+    document_type = models.CharField(max_length=20, choices=[('CI', 'CI'), ('NIT', 'NIT'), ('PASSPORT', 'Pasaporte')],
+                                     verbose_name='Tipo de documento')
+    document_number = models.CharField(max_length=50, unique=True, verbose_name='Número de documento')
+    
+    # Contacto
+    email = models.EmailField(blank=True, verbose_name='Correo electrónico')
+    phone = models.CharField(max_length=20, verbose_name='Teléfono')
+    address = models.TextField(blank=True, verbose_name='Dirección')
+    
+    # Relación con socio (opcional)
+    partner = models.OneToOneField(Partner, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='customer', verbose_name='Socio asociado')
+    
+    # Estado
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    
+    # Metadatos
+    notes = models.TextField(blank=True, verbose_name='Notas')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='created_customers', verbose_name='Creado por')
+
+    class Meta:
+        db_table = 'customers'
+        verbose_name = 'Cliente'
+        verbose_name_plural = 'Clientes'
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['document_number']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} - {self.document_number}"
+
+
+class Order(models.Model):
+    """Pedidos de venta"""
+    DRAFT = 'DRAFT'
+    CONFIRMED = 'CONFIRMED'
+    PAID = 'PAID'
+    SHIPPED = 'SHIPPED'
+    DELIVERED = 'DELIVERED'
+    CANCELLED = 'CANCELLED'
+    
+    STATUS_CHOICES = [
+        (DRAFT, 'Borrador'),
+        (CONFIRMED, 'Confirmado'),
+        (PAID, 'Pagado'),
+        (SHIPPED, 'Enviado'),
+        (DELIVERED, 'Entregado'),
+        (CANCELLED, 'Cancelado'),
+    ]
+    
+    # Información básica
+    order_number = models.CharField(max_length=50, unique=True, verbose_name='Número de pedido')
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='orders',
+                                 verbose_name='Cliente')
+    campaign = models.ForeignKey(Campaign, on_delete=models.PROTECT, related_name='orders',
+                                 verbose_name='Campaña')
+    
+    # Fechas
+    order_date = models.DateField(verbose_name='Fecha de pedido')
+    delivery_date = models.DateField(null=True, blank=True, verbose_name='Fecha de entrega estimada')
+    
+    # Montos
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                   validators=[MinValueValidator(0)], verbose_name='Subtotal')
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                                             validators=[MinValueValidator(0)], verbose_name='Descuento (%)')
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                         validators=[MinValueValidator(0)], verbose_name='Monto de descuento')
+    tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                     validators=[MinValueValidator(0)], verbose_name='Impuestos')
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                               validators=[MinValueValidator(0)], verbose_name='Total')
+    
+    # Estado
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=DRAFT, verbose_name='Estado')
+    
+    # Observaciones
+    notes = models.TextField(blank=True, verbose_name='Notas')
+    
+    # Metadatos
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='created_orders', verbose_name='Creado por')
+
+    class Meta:
+        db_table = 'orders'
+        verbose_name = 'Pedido'
+        verbose_name_plural = 'Pedidos'
+        ordering = ['-order_date', '-created_at']
+        indexes = [
+            models.Index(fields=['order_number']),
+            models.Index(fields=['customer', 'order_date']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"{self.order_number} - {self.customer.name}"
+
+    def calculate_totals(self):
+        """Calcular totales del pedido"""
+        self.subtotal = sum(item.line_total for item in self.items.all())
+        self.discount_amount = (self.subtotal * self.discount_percentage) / 100
+        self.total = self.subtotal - self.discount_amount + self.tax_amount
+        self.save()
+
+    @property
+    def total_items(self):
+        """Total de items en el pedido"""
+        return self.items.count()
+
+    @property
+    def total_quantity(self):
+        """Cantidad total de productos"""
+        return sum(item.quantity for item in self.items.all())
+
+
+class OrderItem(models.Model):
+    """Items de pedido"""
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items',
+                             verbose_name='Pedido')
+    product = models.ForeignKey(HarvestedProduct, on_delete=models.PROTECT,
+                                related_name='order_items', verbose_name='Producto')
+    
+    # Cantidades
+    quantity = models.DecimalField(max_digits=10, decimal_places=2,
+                                   validators=[MinValueValidator(0.01)], verbose_name='Cantidad')
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2,
+                                     validators=[MinValueValidator(0)], verbose_name='Precio unitario')
+    line_total = models.DecimalField(max_digits=10, decimal_places=2,
+                                     validators=[MinValueValidator(0)], verbose_name='Total línea')
+    
+    # Metadatos
+    notes = models.TextField(blank=True, verbose_name='Notas')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+
+    class Meta:
+        db_table = 'order_items'
+        verbose_name = 'Item de Pedido'
+        verbose_name_plural = 'Items de Pedido'
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.order.order_number} - {self.product.product_name}"
+
+    def save(self, *args, **kwargs):
+        """Calcular total de línea al guardar"""
+        self.line_total = self.quantity * self.unit_price
+        super().save(*args, **kwargs)
+        # Actualizar totales del pedido
+        self.order.calculate_totals()
+
+
+class Payment(models.Model):
+    """Pagos de pedidos"""
+    PENDING = 'PENDING'
+    COMPLETED = 'COMPLETED'
+    FAILED = 'FAILED'
+    REFUNDED = 'REFUNDED'
+    
+    STATUS_CHOICES = [
+        (PENDING, 'Pendiente'),
+        (COMPLETED, 'Completado'),
+        (FAILED, 'Fallido'),
+        (REFUNDED, 'Reembolsado'),
+    ]
+    
+    # Información básica
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payments',
+                             verbose_name='Pedido')
+    payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT,
+                                       related_name='payments', verbose_name='Método de pago')
+    
+    # Montos
+    amount = models.DecimalField(max_digits=10, decimal_places=2,
+                                validators=[MinValueValidator(0.01)], verbose_name='Monto')
+    
+    # Detalles
+    payment_date = models.DateField(verbose_name='Fecha de pago')
+    reference_number = models.CharField(max_length=200, blank=True, verbose_name='Número de referencia')
+    receipt_number = models.CharField(max_length=200, blank=True, verbose_name='Número de recibo')
+    
+    # Estado
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING, verbose_name='Estado')
+    
+    # Observaciones
+    notes = models.TextField(blank=True, verbose_name='Notas')
+    
+    # Metadatos
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='created_payments', verbose_name='Creado por')
+
+    class Meta:
+        db_table = 'payments'
+        verbose_name = 'Pago'
+        verbose_name_plural = 'Pagos'
+        ordering = ['-payment_date', '-created_at']
+        indexes = [
+            models.Index(fields=['order', 'payment_date']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"Pago {self.id} - {self.order.order_number} - {self.amount}"

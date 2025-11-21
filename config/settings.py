@@ -59,6 +59,11 @@ INSTALLED_APPS = [
     'farm_activities',
     'inventory',
     'production',
+    # Apps del proyecto - Sprint 3
+    'sales',
+    'requests',
+    'pricing',
+    'shipping',
 ]
 
 MIDDLEWARE = [

@@ -19,4 +19,9 @@ urlpatterns = [
     path('api/farm-activities/', include('farm_activities.urls')),
     path('api/inventory/', include('inventory.urls')),
     path('api/production/', include('production.urls')),
+    # Sprint 3
+    path('api/sales/', include('sales.urls')),
+    path('api/requests/', include('requests.urls')),
+    path('api/pricing/', include('pricing.urls')),
+    path('api/shipping/', include('shipping.urls')),
 ]

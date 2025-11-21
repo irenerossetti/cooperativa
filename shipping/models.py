@@ -1,0 +1,74 @@
+from django.db import models
+from sales.models import Order
+from partners.models import Community
+from users.models import User
+
+
+class Shipment(models.Model):
+    """Envíos de pedidos"""
+    PENDING = 'PENDING'
+    SCHEDULED = 'SCHEDULED'
+    IN_TRANSIT = 'IN_TRANSIT'
+    DELIVERED = 'DELIVERED'
+    FAILED = 'FAILED'
+    CANCELLED = 'CANCELLED'
+    
+    STATUS_CHOICES = [
+        (PENDING, 'Pendiente'),
+        (SCHEDULED, 'Programado'),
+        (IN_TRANSIT, 'En Tránsito'),
+        (DELIVERED, 'Entregado'),
+        (FAILED, 'Fallido'),
+        (CANCELLED, 'Cancelado'),
+    ]
+    
+    # Información básica
+    shipment_number = models.CharField(max_length=50, unique=True, verbose_name='Número de envío')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='shipments',
+                             verbose_name='Pedido')
+    
+    # Destino
+    destination_community = models.ForeignKey(Community, on_delete=models.PROTECT, null=True, blank=True,
+                                             related_name='shipments', verbose_name='Comunidad destino')
+    destination_address = models.TextField(verbose_name='Dirección de entrega')
+    
+    # Fechas
+    scheduled_date = models.DateField(verbose_name='Fecha programada')
+    actual_delivery_date = models.DateField(null=True, blank=True, verbose_name='Fecha de entrega real')
+    
+    # Transporte
+    carrier = models.CharField(max_length=200, blank=True, verbose_name='Transportista')
+    vehicle_plate = models.CharField(max_length=20, blank=True, verbose_name='Placa del vehículo')
+    driver_name = models.CharField(max_length=200, blank=True, verbose_name='Nombre del conductor')
+    driver_phone = models.CharField(max_length=20, blank=True, verbose_name='Teléfono del conductor')
+    
+    # Estado
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING, verbose_name='Estado')
+    
+    # Detalles
+    tracking_number = models.CharField(max_length=200, blank=True, verbose_name='Número de seguimiento')
+    notes = models.TextField(blank=True, verbose_name='Notas')
+    
+    # Firma y recepción
+    received_by = models.CharField(max_length=200, blank=True, verbose_name='Recibido por')
+    signature = models.TextField(blank=True, verbose_name='Firma (base64)')
+    
+    # Metadatos
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='created_shipments', verbose_name='Creado por')
+
+    class Meta:
+        db_table = 'shipments'
+        verbose_name = 'Envío'
+        verbose_name_plural = 'Envíos'
+        ordering = ['-scheduled_date', '-created_at']
+        indexes = [
+            models.Index(fields=['shipment_number']),
+            models.Index(fields=['order', 'status']),
+            models.Index(fields=['scheduled_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.shipment_number} - {self.order.order_number}"
