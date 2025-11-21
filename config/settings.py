@@ -64,6 +64,15 @@ INSTALLED_APPS = [
     'requests',
     'pricing',
     'shipping',
+    # Apps del proyecto - Sprint 4
+    'ai_recommendations',
+    'financial',
+    'reports',
+    'traceability',
+    'analytics',
+    # Apps del proyecto - Sprint 5 (Completar casos de uso)
+    'monitoring',
+    'weather',
 ]
 
 MIDDLEWARE = [
@@ -199,3 +208,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Custom user model
 AUTH_USER_MODEL = 'users.User'
+
+# OpenWeatherMap API Configuration
+OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY', None)

@@ -24,4 +24,13 @@ urlpatterns = [
     path('api/requests/', include('requests.urls')),
     path('api/pricing/', include('pricing.urls')),
     path('api/shipping/', include('shipping.urls')),
+    # Sprint 4
+    path('api/ai/', include('ai_recommendations.urls')),
+    path('api/financial/', include('financial.urls')),
+    path('api/reports/', include('reports.urls')),
+    path('api/traceability/', include('traceability.urls')),
+    path('api/analytics/', include('analytics.urls')),
+    # Sprint 5 - Completar casos de uso
+    path('api/monitoring/', include('monitoring.urls')),
+    path('api/weather/', include('weather.urls')),
 ]
