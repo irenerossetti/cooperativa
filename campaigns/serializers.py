@@ -5,10 +5,16 @@ from .models import Campaign
 class CampaignSerializer(serializers.ModelSerializer):
     """Serializer para campañas"""
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    total_area = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    total_partners = serializers.IntegerField(read_only=True)
-    partners_count = serializers.IntegerField(source='partners.count', read_only=True)
-    parcels_count = serializers.IntegerField(source='parcels.count', read_only=True)
+    total_area = serializers.ReadOnlyField()
+    total_partners = serializers.ReadOnlyField()
+    partners_count = serializers.SerializerMethodField()
+    parcels_count = serializers.SerializerMethodField()
+    
+    def get_partners_count(self, obj):
+        return obj.partners.count()
+    
+    def get_parcels_count(self, obj):
+        return obj.parcels.count()
     
     class Meta:
         model = Campaign
@@ -38,8 +44,14 @@ class CampaignSerializer(serializers.ModelSerializer):
 class CampaignListSerializer(serializers.ModelSerializer):
     """Serializer simplificado para listado de campañas"""
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    partners_count = serializers.IntegerField(source='partners.count', read_only=True)
-    parcels_count = serializers.IntegerField(source='parcels.count', read_only=True)
+    partners_count = serializers.SerializerMethodField()
+    parcels_count = serializers.SerializerMethodField()
+    
+    def get_partners_count(self, obj):
+        return obj.partners.count()
+    
+    def get_parcels_count(self, obj):
+        return obj.parcels.count()
     
     class Meta:
         model = Campaign

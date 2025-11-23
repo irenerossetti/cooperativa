@@ -10,11 +10,7 @@ from users.permissions import IsAdminOrReadOnly
 
 class CampaignViewSet(viewsets.ModelViewSet):
     """ViewSet para gestión de campañas"""
-    queryset = Campaign.objects.prefetch_related('partners', 'parcels').annotate(
-        partners_count=Count('partners'),
-        parcels_count=Count('parcels'),
-        total_area=Sum('parcels__surface')
-    )
+    queryset = Campaign.objects.prefetch_related('partners', 'parcels')
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
     
     def get_serializer_class(self):

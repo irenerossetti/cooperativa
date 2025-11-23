@@ -80,24 +80,25 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'config.disable_csrf.DisableCSRFMiddleware',  # Deshabilitar CSRF para APIs
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React development server
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",  # Vite development server
-    "http://127.0.0.1:5173",
-    "http://localhost:8000",  # Django development server
-    "http://127.0.0.1:8000",
-    "http://localhost:8080",  # Additional common ports
-    "http://127.0.0.1:8080",
-    # Add your production domain here
-]
+# CORS settings - Permitir todos los orígenes en desarrollo
+CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",
+#     "http://127.0.0.1:3000",
+#     "http://localhost:5173",
+#     "http://127.0.0.1:5173",
+#     "http://localhost:5174",
+#     "http://127.0.0.1:5174",
+#     "http://localhost:8000",
+#     "http://127.0.0.1:8000",
+# ]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
@@ -128,7 +129,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # Permitir acceso, los permisos se manejan por ViewSet
+        'rest_framework.permissions.IsAuthenticated',  # Requerir autenticación por defecto
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 25,

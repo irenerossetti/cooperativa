@@ -54,9 +54,12 @@ class PartnerSerializer(serializers.ModelSerializer):
 class PartnerListSerializer(serializers.ModelSerializer):
     """Serializer simplificado para listado de socios"""
     community_name = serializers.CharField(source='community.name', read_only=True)
-    full_name = serializers.CharField(read_only=True)
+    full_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     
     class Meta:
         model = Partner
-        fields = ['id', 'ci', 'full_name', 'phone', 'community_name', 'status', 'status_display']
+        fields = ['id', 'ci', 'first_name', 'last_name', 'full_name', 'phone', 'email', 'community', 'community_name', 'status', 'status_display']
+    
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}"

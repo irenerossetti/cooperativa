@@ -24,10 +24,9 @@ class CommunityViewSet(viewsets.ModelViewSet):
 
 class PartnerViewSet(viewsets.ModelViewSet):
     """ViewSet para gestión de socios"""
-    queryset = Partner.objects.select_related('community', 'user').annotate(
-        total_parcels=Count('parcels'),
-        total_surface=Sum('parcels__surface')
-    )
+    queryset = Partner.objects.select_related('community', 'user').all()
+    # Permitir a usuarios autenticados crear/editar socios
+    # En producción, cambiar a IsAdminOrReadOnly si solo admins deben crear
     permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):

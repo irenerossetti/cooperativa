@@ -5,17 +5,13 @@ from django.core.validators import RegexValidator
 
 class Role(models.Model):
     """Roles del sistema"""
+    # Roles predefinidos (opcionales, para referencia)
     ADMIN = 'ADMIN'
     PARTNER = 'PARTNER'
     OPERATOR = 'OPERATOR'
     
-    ROLE_CHOICES = [
-        (ADMIN, 'Administrador'),
-        (PARTNER, 'Socio'),
-        (OPERATOR, 'Operador'),
-    ]
-    
-    name = models.CharField(max_length=50, choices=ROLE_CHOICES, unique=True, verbose_name='Nombre del rol')
+    # Ahora name es un CharField libre, sin choices
+    name = models.CharField(max_length=50, unique=True, verbose_name='Nombre del rol')
     description = models.TextField(blank=True, verbose_name='Descripción')
     permissions = models.JSONField(default=dict, verbose_name='Permisos')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
@@ -29,7 +25,7 @@ class Role(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return self.get_name_display()
+        return self.name
 
 
 class User(AbstractUser):

@@ -80,14 +80,26 @@ class UserViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def login(self, request):
-        """Iniciar sesión"""
+        """Iniciar sesión con username o email"""
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        user = authenticate(
-            username=serializer.validated_data['username'],
-            password=serializer.validated_data['password']
-        )
+        username_or_email = serializer.validated_data['username']
+        password = serializer.validated_data['password']
+        
+        # Intentar encontrar el usuario por username o email
+        user = None
+        try:
+            # Primero intentar por username
+            user_obj = User.objects.get(username=username_or_email)
+            user = authenticate(username=user_obj.username, password=password)
+        except User.DoesNotExist:
+            # Si no existe, intentar por email
+            try:
+                user_obj = User.objects.get(email=username_or_email)
+                user = authenticate(username=user_obj.username, password=password)
+            except User.DoesNotExist:
+                pass
         
         if user is None:
             return Response(
