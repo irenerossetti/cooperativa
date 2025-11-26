@@ -35,4 +35,6 @@ urlpatterns = [
     # Sprint 5 - Completar casos de uso
     path('api/monitoring/', include('monitoring.urls')),
     path('api/weather/', include('weather.urls')),
+    # Chatbot
+    path('api/chatbot/', include('chatbot.urls')),
 ]

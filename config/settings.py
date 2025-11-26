@@ -76,6 +76,8 @@ INSTALLED_APPS = [
     # Apps del proyecto - Sprint 5 (Completar casos de uso)
     'monitoring',
     'weather',
+    # Chatbot
+    'chatbot',
 ]
 
 MIDDLEWARE = [
