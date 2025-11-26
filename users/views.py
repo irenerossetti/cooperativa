@@ -7,13 +7,16 @@ from django.db.models import Q
 from .models import User, Role
 from .serializers import UserSerializer, RoleSerializer, LoginSerializer, ChangePasswordSerializer
 from .permissions import IsAdmin
+from audit.mixins import AuditMixin
+from audit.models import AuditLog
 
 
-class RoleViewSet(viewsets.ModelViewSet):
+class RoleViewSet(AuditMixin, viewsets.ModelViewSet):
     """ViewSet para gestión de roles"""
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+    audit_model_name = 'Role'
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -23,14 +26,30 @@ class RoleViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(AuditMixin, viewsets.ModelViewSet):
     """ViewSet para gestión de usuarios"""
     queryset = User.objects.select_related('role').all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+    audit_model_name = 'User'
     
     def get_queryset(self):
         queryset = super().get_queryset()
+        
+        # Debug
+        print(f"DEBUG Users: organization={getattr(self.request, 'organization', None)}, user={self.request.user.username}, is_superuser={self.request.user.is_superuser}")
+        
+        # Filtrar por organización (solo mostrar usuarios con partner en la org actual)
+        # Excepto para superusers
+        if hasattr(self.request, 'organization') and self.request.organization:
+            if not self.request.user.is_superuser:
+                # Obtener IDs de usuarios que tienen partner en esta organización
+                from partners.models import Partner
+                user_ids = list(Partner.objects.all_organizations().filter(
+                    organization=self.request.organization
+                ).values_list('user_id', flat=True))
+                print(f"DEBUG Users: Filtering by user_ids={user_ids}")
+                queryset = queryset.filter(id__in=user_ids)
         
         # Filtros
         search = self.request.query_params.get('search', None)
@@ -55,7 +74,9 @@ class UserViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         """Guardar el usuario que creó este registro"""
-        serializer.save(created_by=self.request.user)
+        instance = serializer.save(created_by=self.request.user)
+        self.create_audit_log(AuditLog.CREATE, instance)
+        return instance
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
     def deactivate(self, request, pk=None):
@@ -68,6 +89,11 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         user.is_active = False
         user.save()
+        self.create_audit_log(
+            AuditLog.UPDATE, 
+            user, 
+            f"Desactivó usuario: {user.username}"
+        )
         return Response({'message': 'Usuario desactivado exitosamente'})
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
@@ -76,6 +102,11 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         user.is_active = True
         user.save()
+        self.create_audit_log(
+            AuditLog.UPDATE, 
+            user, 
+            f"Activó usuario: {user.username}"
+        )
         return Response({'message': 'Usuario activado exitosamente'})
     
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
@@ -113,7 +144,48 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
+        # Validar acceso a la organización en el login
+        from tenants.models import Organization
+        from partners.models import Partner
+        
+        org_subdomain = request.headers.get('X-Organization-Subdomain') or request.GET.get('org')
+        
+        if org_subdomain and not user.is_superuser:
+            try:
+                organization = Organization.objects.get(subdomain=org_subdomain, is_active=True)
+                
+                # Si no es ADMIN, validar que tenga partner en esta organización
+                is_admin = user.role and user.role.name == 'ADMIN'
+                if not is_admin:
+                    has_access = Partner.objects.all_organizations().filter(
+                        organization=organization,
+                        user=user
+                    ).exists()
+                    
+                    if not has_access:
+                        return Response(
+                            {'error': 'Acceso denegado',
+                             'detail': f'No tienes acceso a {organization.name}'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+            except Organization.DoesNotExist:
+                return Response(
+                    {'error': 'Organización no encontrada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
         login(request, user)
+        
+        # Registrar login en auditoría
+        from audit.mixins import get_client_ip, get_user_agent
+        AuditLog.objects.create(
+            user=user,
+            action=AuditLog.LOGIN,
+            description=f"Usuario {user.username} inició sesión",
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request)
+        )
+        
         return Response({
             'message': 'Inicio de sesión exitoso',
             'user': UserSerializer(user).data
@@ -122,6 +194,19 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def logout(self, request):
         """Cerrar sesión"""
+        user = request.user
+        username = user.username if user.is_authenticated else 'unknown'
+        
+        # Registrar logout en auditoría antes de cerrar sesión
+        from audit.mixins import get_client_ip, get_user_agent
+        AuditLog.objects.create(
+            user=user,
+            action=AuditLog.LOGOUT,
+            description=f"Usuario {username} cerró sesión",
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request)
+        )
+        
         logout(request)
         return Response({'message': 'Sesión cerrada exitosamente'})
     

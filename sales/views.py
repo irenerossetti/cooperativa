@@ -10,18 +10,22 @@ from .models import PaymentMethod, Customer, Order, OrderItem, Payment
 from .serializers import (PaymentMethodSerializer, CustomerSerializer, 
                           OrderSerializer, OrderItemSerializer, PaymentSerializer)
 from users.permissions import IsAdminOrReadOnly
+from audit.mixins import AuditMixin
+from audit.models import AuditLog
 
 
-class PaymentMethodViewSet(viewsets.ModelViewSet):
+class PaymentMethodViewSet(AuditMixin, viewsets.ModelViewSet):
     queryset = PaymentMethod.objects.all()
     serializer_class = PaymentMethodSerializer
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+    audit_model_name = 'PaymentMethod'
 
 
-class CustomerViewSet(viewsets.ModelViewSet):
+class CustomerViewSet(AuditMixin, viewsets.ModelViewSet):
     queryset = Customer.objects.select_related('partner')
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated]
+    audit_model_name = 'Customer'
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -35,13 +39,16 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return queryset
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        instance = serializer.save(created_by=self.request.user)
+        self.create_audit_log(AuditLog.CREATE, instance)
+        return instance
 
 
-class OrderViewSet(viewsets.ModelViewSet):
+class OrderViewSet(AuditMixin, viewsets.ModelViewSet):
     queryset = Order.objects.select_related('customer', 'campaign').prefetch_related('items')
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
+    audit_model_name = 'Order'
     
     def get_queryset(self):
         queryset = super().get_queryset()

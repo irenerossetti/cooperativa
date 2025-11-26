@@ -54,9 +54,29 @@ class User(AbstractUser):
         return f"{self.get_full_name()} ({self.username})"
 
     def has_permission(self, permission_key):
-        """Verifica si el usuario tiene un permiso específico"""
+        """
+        Verifica si el usuario tiene un permiso específico.
+        Soporta permisos anidados usando notación de punto.
+        
+        Ejemplos:
+        - 'users.view' -> permissions['users']['view']
+        - 'users.delete' -> permissions['users']['delete']
+        - 'ui.show_delete_button' -> permissions['ui']['show_delete_button']
+        """
         if self.is_superuser:
             return True
-        if self.role and self.role.is_active:
-            return self.role.permissions.get(permission_key, False)
-        return False
+        
+        if not self.role or not self.role.is_active:
+            return False
+        
+        # Navegar por la estructura anidada usando notación de punto
+        keys = permission_key.split('.')
+        value = self.role.permissions
+        
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return False
+        
+        return bool(value)

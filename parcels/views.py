@@ -7,26 +7,30 @@ from .models import Parcel, SoilType, Crop
 from .serializers import (ParcelSerializer, ParcelListSerializer, 
                           SoilTypeSerializer, CropSerializer)
 from users.permissions import IsAdminOrReadOnly
+from audit.mixins import AuditMixin
 
 
-class SoilTypeViewSet(viewsets.ModelViewSet):
+class SoilTypeViewSet(AuditMixin, viewsets.ModelViewSet):
     """ViewSet para tipos de suelo"""
     queryset = SoilType.objects.all()
     serializer_class = SoilTypeSerializer
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+    audit_model_name = 'SoilType'
 
 
-class CropViewSet(viewsets.ModelViewSet):
+class CropViewSet(AuditMixin, viewsets.ModelViewSet):
     """ViewSet para cultivos"""
     queryset = Crop.objects.all()
     serializer_class = CropSerializer
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+    audit_model_name = 'Crop'
 
 
-class ParcelViewSet(viewsets.ModelViewSet):
+class ParcelViewSet(AuditMixin, viewsets.ModelViewSet):
     """ViewSet para parcelas"""
     queryset = Parcel.objects.select_related('partner', 'soil_type', 'current_crop')
     permission_classes = [IsAuthenticated]
+    audit_model_name = 'Parcel'
     
     def get_serializer_class(self):
         if self.action == 'list':

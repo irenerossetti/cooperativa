@@ -26,6 +26,22 @@ class TenantMiddleware(MiddlewareMixin):
     """
     
     def process_request(self, request):
+        # Rutas públicas que NO requieren organización ni validación de acceso
+        public_paths = [
+            '/api/auth/',
+            '/api/register/',
+            '/admin/',
+            '/api/tenants/register/',
+            '/api/tenants/my-organizations/',
+        ]
+        is_public = any(request.path.startswith(path) for path in public_paths)
+        
+        # Si es ruta pública, no procesar tenant
+        if is_public:
+            set_current_organization(None)
+            request.organization = None
+            return None
+        
         organization = None
         
         # Método 1: Detectar por subdominio
@@ -73,21 +89,36 @@ class TenantMiddleware(MiddlewareMixin):
         request.organization = organization
         
         # Si no se encontró organización y la ruta requiere tenant, retornar error
-        # (excepto para rutas públicas como login, registro, etc.)
-        public_paths = [
-            '/api/auth/',
-            '/api/register/',
-            '/admin/',
-            '/api/tenants/register/',
-            '/api/tenants/my-organizations/',
-        ]
-        is_public = any(request.path.startswith(path) for path in public_paths)
-        
-        if not organization and not is_public and request.path.startswith('/api/'):
+        if not organization and request.path.startswith('/api/'):
             return JsonResponse({
                 'error': 'Organización no encontrada',
                 'detail': 'Debe especificar una organización válida mediante subdominio, header X-Organization-Subdomain, o parámetro ?org='
             }, status=400)
+        
+        # Validar que el usuario autenticado tenga acceso a esta organización
+        # EXCEPTO para el endpoint /me/ que necesita funcionar siempre
+        if organization and request.user.is_authenticated and not request.user.is_superuser:
+            # No validar en /me/ para permitir que el usuario obtenga su info
+            if '/users/me/' in request.path:
+                return None
+                
+            # Verificar si el usuario es ADMIN (puede acceder a todas las organizaciones)
+            is_admin = request.user.role and request.user.role.name == 'ADMIN'
+            
+            if not is_admin:
+                # Verificar si el usuario tiene un partner en esta organización
+                # Usar all_organizations() para bypassear el filtro automático del TenantManager
+                from partners.models import Partner
+                has_access = Partner.objects.all_organizations().filter(
+                    organization=organization,
+                    user=request.user
+                ).exists()
+                
+                if not has_access:
+                    return JsonResponse({
+                        'error': 'Acceso denegado',
+                        'detail': f'No tienes acceso a la organización {organization.name}'
+                    }, status=403)
         
         return None
     

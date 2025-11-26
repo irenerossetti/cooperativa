@@ -32,6 +32,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = [
+    '*', 
     'localhost',
     '127.0.0.1',
     '0.0.0.0',
@@ -123,6 +124,7 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'x-organization-subdomain',  # Para multi-tenancy
 ]
 
 # REST Framework settings

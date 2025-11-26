@@ -20,12 +20,18 @@ class PartnerSerializer(serializers.ModelSerializer):
     total_surface = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     
+    # Campos opcionales para crear usuario automáticamente
+    create_user = serializers.BooleanField(write_only=True, required=False, default=False)
+    username = serializers.CharField(write_only=True, required=False)
+    password = serializers.CharField(write_only=True, required=False)
+    user_role = serializers.CharField(write_only=True, required=False)
+    
     class Meta:
         model = Partner
         fields = ['id', 'ci', 'nit', 'first_name', 'last_name', 'full_name', 'email', 'phone', 
                   'address', 'community', 'community_name', 'user', 'status', 'status_display',
                   'registration_date', 'notes', 'total_parcels', 'total_surface', 
-                  'created_at', 'updated_at']
+                  'created_at', 'updated_at', 'create_user', 'username', 'password', 'user_role']
         read_only_fields = ['created_at', 'updated_at', 'registration_date']
 
     def validate_ci(self, value):
@@ -49,6 +55,45 @@ class PartnerSerializer(serializers.ModelSerializer):
         if value and '@' not in value:
             raise serializers.ValidationError("Formato de email inválido.")
         return value
+    
+    def create(self, validated_data):
+        """Crear partner y opcionalmente su usuario"""
+        # Extraer campos de usuario
+        create_user = validated_data.pop('create_user', False)
+        username = validated_data.pop('username', None)
+        password = validated_data.pop('password', None)
+        user_role = validated_data.pop('user_role', None)
+        
+        # Crear el partner
+        partner = Partner.objects.create(**validated_data)
+        
+        # Si se solicita crear usuario
+        if create_user and username and password:
+            from users.models import User, Role
+            
+            # Crear usuario
+            user = User.objects.create_user(
+                username=username,
+                email=partner.email or f"{username}@cooperativa.com",
+                password=password,
+                first_name=partner.first_name,
+                last_name=partner.last_name
+            )
+            
+            # Asignar rol si se especifica
+            if user_role:
+                try:
+                    role = Role.objects.get(name=user_role)
+                    user.role = role
+                    user.save()
+                except Role.DoesNotExist:
+                    pass
+            
+            # Vincular usuario al partner
+            partner.user = user
+            partner.save()
+        
+        return partner
 
 
 class PartnerListSerializer(serializers.ModelSerializer):

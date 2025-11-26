@@ -6,28 +6,31 @@ from django.db.models import Q, Count, Sum
 from .models import Partner, Community
 from .serializers import PartnerSerializer, PartnerListSerializer, CommunitySerializer
 from users.permissions import IsAdmin, IsAdminOrReadOnly
+from audit.mixins import AuditMixin
+from audit.models import AuditLog
 
 
-class CommunityViewSet(viewsets.ModelViewSet):
+class CommunityViewSet(AuditMixin, viewsets.ModelViewSet):
     """ViewSet para gestión de comunidades"""
-    queryset = Community.objects.annotate(partners_count=Count('partners'))
     serializer_class = CommunitySerializer
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+    audit_model_name = 'Community'
     
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = Community.objects.annotate(partners_count=Count('partners'))
         is_active = self.request.query_params.get('is_active', None)
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
         return queryset
 
 
-class PartnerViewSet(viewsets.ModelViewSet):
+class PartnerViewSet(AuditMixin, viewsets.ModelViewSet):
     """ViewSet para gestión de socios"""
-    queryset = Partner.objects.select_related('community', 'user').all()
+    queryset = Partner.objects.select_related('community', 'user')
     # Permitir a usuarios autenticados crear/editar socios
     # En producción, cambiar a IsAdminOrReadOnly si solo admins deben crear
     permission_classes = [IsAuthenticated]
+    audit_model_name = 'Partner'
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -60,7 +63,11 @@ class PartnerViewSet(viewsets.ModelViewSet):
         return queryset
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        # Debug: verificar organización
+        print(f"DEBUG: Creating partner in organization: {self.request.organization}")
+        instance = serializer.save(created_by=self.request.user)
+        self.create_audit_log(AuditLog.CREATE, instance)
+        return instance
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
     def deactivate(self, request, pk=None):
@@ -68,6 +75,11 @@ class PartnerViewSet(viewsets.ModelViewSet):
         partner = self.get_object()
         partner.status = Partner.INACTIVE
         partner.save()
+        self.create_audit_log(
+            AuditLog.UPDATE, 
+            partner, 
+            f"Desactivó socio: {self.get_object_description(partner)}"
+        )
         return Response({'message': 'Socio desactivado exitosamente'})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
@@ -76,6 +88,11 @@ class PartnerViewSet(viewsets.ModelViewSet):
         partner = self.get_object()
         partner.status = Partner.ACTIVE
         partner.save()
+        self.create_audit_log(
+            AuditLog.UPDATE, 
+            partner, 
+            f"Activó socio: {self.get_object_description(partner)}"
+        )
         return Response({'message': 'Socio activado exitosamente'})
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])

@@ -16,16 +16,34 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer para usuarios"""
     role_name = serializers.CharField(source='role.get_name_display', read_only=True)
     password = serializers.CharField(write_only=True, required=False, validators=[validate_password])
+    partner = serializers.SerializerMethodField()
     
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'phone', 
                   'role', 'role_name', 'is_active', 'is_staff', 'is_superuser', 
-                  'password', 'created_at', 'updated_at']
+                  'password', 'created_at', 'updated_at', 'partner']
         read_only_fields = ['created_at', 'updated_at', 'is_staff', 'is_superuser']
         extra_kwargs = {
             'password': {'write_only': True}
         }
+    
+    def get_partner(self, obj):
+        """Obtener información del partner asociado con su organización"""
+        try:
+            if hasattr(obj, 'partner') and obj.partner:
+                return {
+                    'id': obj.partner.id,
+                    'full_name': obj.partner.full_name,
+                    'organization': {
+                        'id': obj.partner.organization.id,
+                        'name': obj.partner.organization.name,
+                        'subdomain': obj.partner.organization.subdomain,
+                    } if obj.partner.organization else None
+                }
+        except:
+            pass
+        return None
 
     def validate_email(self, value):
         """Validar que el email no esté duplicado"""
