@@ -78,6 +78,10 @@ INSTALLED_APPS = [
     'weather',
     # Chatbot
     'chatbot',
+    # Market Analysis
+    'market_analysis',
+    # Alerts
+    'alerts',
 ]
 
 MIDDLEWARE = [

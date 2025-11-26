@@ -37,4 +37,8 @@ urlpatterns = [
     path('api/weather/', include('weather.urls')),
     # Chatbot
     path('api/chatbot/', include('chatbot.urls')),
+    # Market Analysis
+    path('api/market/', include('market_analysis.urls')),
+    # Alerts
+    path('api/alerts/', include('alerts.urls')),
 ]
