@@ -1,11 +1,12 @@
 from django.db import models
 from django.core.validators import RegexValidator
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class Community(models.Model):
+class Community(TenantModel):
     """Comunidades"""
-    name = models.CharField(max_length=200, unique=True, verbose_name='Nombre')
+    name = models.CharField(max_length=200, verbose_name='Nombre')
     description = models.TextField(blank=True, verbose_name='Descripción')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
@@ -17,11 +18,16 @@ class Community(models.Model):
         verbose_name_plural = 'Comunidades'
         ordering = ['name']
 
+    class Meta:
+        unique_together = [
+            ['organization', 'name'],
+        ]
+
     def __str__(self):
         return self.name
 
 
-class Partner(models.Model):
+class Partner(TenantModel):
     """Socios de la cooperativa"""
     ACTIVE = 'ACTIVE'
     INACTIVE = 'INACTIVE'
@@ -49,8 +55,8 @@ class Partner(models.Model):
     )
     
     # Información personal
-    ci = models.CharField(max_length=10, unique=True, validators=[ci_validator], verbose_name='Cédula de Identidad')
-    nit = models.CharField(max_length=15, unique=True, validators=[nit_validator], blank=True, null=True, verbose_name='NIT')
+    ci = models.CharField(max_length=10, validators=[ci_validator], verbose_name='Cédula de Identidad')
+    nit = models.CharField(max_length=15, validators=[nit_validator], blank=True, null=True, verbose_name='NIT')
     first_name = models.CharField(max_length=100, verbose_name='Nombres')
     last_name = models.CharField(max_length=100, verbose_name='Apellidos')
     
@@ -83,6 +89,12 @@ class Partner(models.Model):
             models.Index(fields=['ci']),
             models.Index(fields=['nit']),
             models.Index(fields=['status']),
+        ]
+
+    class Meta:
+        unique_together = [
+            ['organization', 'ci'],
+            ['organization', 'nit'],
         ]
 
     def __str__(self):

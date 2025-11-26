@@ -1,8 +1,9 @@
 from django.db import models
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class AuditLog(models.Model):
+class AuditLog(TenantModel):
     """Bitácora de auditoría del sistema"""
     LOGIN = 'LOGIN'
     LOGOUT = 'LOGOUT'

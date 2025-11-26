@@ -3,9 +3,10 @@ from campaigns.models import Campaign
 from parcels.models import Parcel
 from partners.models import Partner
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class HarvestedProduct(models.Model):
+class HarvestedProduct(TenantModel):
     """Productos cosechados"""
     # Información básica
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE,

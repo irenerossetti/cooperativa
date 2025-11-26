@@ -1,9 +1,10 @@
 from django.db import models
 from parcels.models import Parcel
 from partners.models import Community
+from tenants.managers import TenantModel
 
 
-class WeatherData(models.Model):
+class WeatherData(TenantModel):
     """Datos climáticos"""
     # Ubicación
     community = models.ForeignKey(Community, on_delete=models.CASCADE, null=True, blank=True,
@@ -72,7 +73,7 @@ class WeatherData(models.Model):
         return f"{self.community.name if self.community else 'General'} - {self.date} - {self.temperature}°C"
 
 
-class WeatherForecast(models.Model):
+class WeatherForecast(TenantModel):
     """Pronóstico del tiempo"""
     # Ubicación
     community = models.ForeignKey(Community, on_delete=models.CASCADE, null=True, blank=True,
@@ -118,7 +119,7 @@ class WeatherForecast(models.Model):
         return f"Pronóstico: {self.forecast_date} - {self.temperature}°C"
 
 
-class WeatherAlert(models.Model):
+class WeatherAlert(TenantModel):
     """Alertas climáticas tempranas"""
     FROST = 'FROST'
     HEAVY_RAIN = 'HEAVY_RAIN'

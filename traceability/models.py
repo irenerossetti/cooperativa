@@ -5,9 +5,10 @@ from farm_activities.models import FarmActivity
 from inventory.models import InventoryItem, InventoryMovement
 from production.models import HarvestedProduct
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class ParcelTraceability(models.Model):
+class ParcelTraceability(TenantModel):
     """Trazabilidad completa de parcelas"""
     parcel = models.ForeignKey(Parcel, on_delete=models.CASCADE,
                                related_name='traceability_records')
@@ -15,8 +16,7 @@ class ParcelTraceability(models.Model):
                                  related_name='traceability_records')
     
     # Información general
-    traceability_code = models.CharField(max_length=100, unique=True,
-                                        verbose_name='Código de trazabilidad')
+    traceability_code = models.CharField(max_length=100, verbose_name='Código de trazabilidad')
     start_date = models.DateField(verbose_name='Fecha de inicio')
     end_date = models.DateField(null=True, blank=True, verbose_name='Fecha de fin')
     
@@ -35,11 +35,16 @@ class ParcelTraceability(models.Model):
         verbose_name_plural = 'Trazabilidad de Parcelas'
         unique_together = ['parcel', 'campaign']
 
+    class Meta:
+        unique_together = [
+            ['organization', 'traceability_code'],
+        ]
+
     def __str__(self):
         return f"{self.traceability_code} - {self.parcel.code}"
 
 
-class InputUsageRecord(models.Model):
+class InputUsageRecord(TenantModel):
     """Registro de uso de insumos en parcelas"""
     traceability = models.ForeignKey(ParcelTraceability, on_delete=models.CASCADE,
                                     related_name='input_records')

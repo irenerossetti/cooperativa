@@ -3,13 +3,14 @@ from django.core.validators import MinValueValidator
 from campaigns.models import Campaign
 from production.models import HarvestedProduct
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class PriceList(models.Model):
+class PriceList(TenantModel):
     """Listas de precios por campaña/temporada"""
     # Información básica
     name = models.CharField(max_length=200, verbose_name='Nombre')
-    code = models.CharField(max_length=50, unique=True, verbose_name='Código')
+    code = models.CharField(max_length=50, verbose_name='Código')
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='price_lists',
                                  verbose_name='Campaña')
     
@@ -37,6 +38,11 @@ class PriceList(models.Model):
             models.Index(fields=['campaign', 'is_active']),
         ]
 
+    class Meta:
+        unique_together = [
+            ['organization', 'code'],
+        ]
+
     def __str__(self):
         return f"{self.code} - {self.name}"
 
@@ -45,7 +51,7 @@ class PriceList(models.Model):
         return self.is_active and self.start_date <= date <= self.end_date
 
 
-class PriceListItem(models.Model):
+class PriceListItem(TenantModel):
     """Items de lista de precios"""
     price_list = models.ForeignKey(PriceList, on_delete=models.CASCADE,
                                    related_name='items', verbose_name='Lista de precios')

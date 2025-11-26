@@ -2,9 +2,10 @@ from django.db import models
 from campaigns.models import Campaign
 from parcels.models import Parcel
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class ActivityType(models.Model):
+class ActivityType(TenantModel):
     """Tipos de labores agrícolas"""
     SOWING = 'SOWING'
     IRRIGATION = 'IRRIGATION'
@@ -22,7 +23,7 @@ class ActivityType(models.Model):
         (OTHER, 'Otra'),
     ]
     
-    name = models.CharField(max_length=50, choices=TYPE_CHOICES, unique=True, verbose_name='Tipo')
+    name = models.CharField(max_length=50, choices=TYPE_CHOICES, verbose_name='Tipo')
     description = models.TextField(blank=True, verbose_name='Descripción')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
@@ -34,11 +35,16 @@ class ActivityType(models.Model):
         verbose_name_plural = 'Tipos de Labores'
         ordering = ['name']
 
+    class Meta:
+        unique_together = [
+            ['organization', 'name'],
+        ]
+
     def __str__(self):
         return self.get_name_display()
 
 
-class FarmActivity(models.Model):
+class FarmActivity(TenantModel):
     """Labores agrícolas realizadas"""
     PENDING = 'PENDING'
     IN_PROGRESS = 'IN_PROGRESS'

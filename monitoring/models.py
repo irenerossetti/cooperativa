@@ -2,9 +2,10 @@ from django.db import models
 from parcels.models import Parcel
 from campaigns.models import Campaign
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class CropMonitoring(models.Model):
+class CropMonitoring(TenantModel):
     """Monitoreo de estado de cultivos"""
     SEEDLING = 'SEEDLING'
     VEGETATIVE = 'VEGETATIVE'
@@ -91,7 +92,7 @@ class CropMonitoring(models.Model):
         return f"{self.parcel.code} - {self.monitoring_date} - {self.get_health_status_display()}"
 
 
-class CropAlert(models.Model):
+class CropAlert(TenantModel):
     """Alertas de cultivos"""
     PEST = 'PEST'
     DISEASE = 'DISEASE'

@@ -4,9 +4,10 @@ from partners.models import Partner
 from parcels.models import Parcel, Crop
 from campaigns.models import Campaign
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class AIRecommendationType(models.Model):
+class AIRecommendationType(TenantModel):
     """Tipos de recomendaciones de IA"""
     PLANTING = 'PLANTING'
     FERTILIZATION = 'FERTILIZATION'
@@ -22,7 +23,7 @@ class AIRecommendationType(models.Model):
         (PEST_CONTROL, 'Control de Plagas'),
     ]
     
-    name = models.CharField(max_length=50, choices=TYPE_CHOICES, unique=True, verbose_name='Tipo')
+    name = models.CharField(max_length=50, choices=TYPE_CHOICES, verbose_name='Tipo')
     description = models.TextField(blank=True, verbose_name='Descripción')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -32,11 +33,16 @@ class AIRecommendationType(models.Model):
         verbose_name = 'Tipo de Recomendación IA'
         verbose_name_plural = 'Tipos de Recomendaciones IA'
 
+    class Meta:
+        unique_together = [
+            ['organization', 'name'],
+        ]
+
     def __str__(self):
         return self.get_name_display()
 
 
-class AIRecommendation(models.Model):
+class AIRecommendation(TenantModel):
     """Recomendaciones generadas por IA"""
     HIGH = 'HIGH'
     MEDIUM = 'MEDIUM'
@@ -96,7 +102,7 @@ class AIRecommendation(models.Model):
         return f"{self.title} - {self.partner.full_name if self.partner else 'General'}"
 
 
-class PlantingRecommendation(models.Model):
+class PlantingRecommendation(TenantModel):
     """Recomendaciones específicas de siembra"""
     recommendation = models.OneToOneField(AIRecommendation, on_delete=models.CASCADE,
                                          related_name='planting_detail', verbose_name='Recomendación')
@@ -138,7 +144,7 @@ class PlantingRecommendation(models.Model):
         return f"Siembra: {self.recommended_crop.name} - {self.optimal_planting_date}"
 
 
-class FertilizationPlan(models.Model):
+class FertilizationPlan(TenantModel):
     """Planes de fertilización personalizados"""
     recommendation = models.OneToOneField(AIRecommendation, on_delete=models.CASCADE,
                                          related_name='fertilization_detail',
@@ -174,7 +180,7 @@ class FertilizationPlan(models.Model):
         return f"{self.plan_name} - {self.parcel.code}"
 
 
-class FertilizationApplication(models.Model):
+class FertilizationApplication(TenantModel):
     """Aplicaciones de fertilización dentro de un plan"""
     plan = models.ForeignKey(FertilizationPlan, on_delete=models.CASCADE,
                             related_name='applications', verbose_name='Plan')
@@ -206,7 +212,7 @@ class FertilizationApplication(models.Model):
         return f"{self.plan.plan_name} - Aplicación #{self.application_number}"
 
 
-class HarvestRecommendation(models.Model):
+class HarvestRecommendation(TenantModel):
     """Recomendaciones de momento óptimo de cosecha"""
     recommendation = models.OneToOneField(AIRecommendation, on_delete=models.CASCADE,
                                          related_name='harvest_detail', verbose_name='Recomendación')
@@ -246,7 +252,7 @@ class HarvestRecommendation(models.Model):
         return f"Cosecha: {self.parcel.code} - {self.optimal_harvest_date}"
 
 
-class MarketOpportunity(models.Model):
+class MarketOpportunity(TenantModel):
     """Oportunidades comerciales y tendencias de precios"""
     recommendation = models.OneToOneField(AIRecommendation, on_delete=models.CASCADE,
                                          related_name='market_detail', verbose_name='Recomendación')
@@ -296,7 +302,7 @@ class MarketOpportunity(models.Model):
         return f"{self.product_name} - {self.get_action_recommended_display()}"
 
 
-class AILearningData(models.Model):
+class AILearningData(TenantModel):
     """Datos de aprendizaje continuo de la IA"""
     recommendation = models.ForeignKey(AIRecommendation, on_delete=models.CASCADE,
                                       related_name='learning_data', verbose_name='Recomendación')

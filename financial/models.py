@@ -5,9 +5,10 @@ from campaigns.models import Campaign
 from farm_activities.models import FarmActivity
 from inventory.models import InventoryItem
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class ExpenseCategory(models.Model):
+class ExpenseCategory(TenantModel):
     """Categorías de gastos"""
     SEEDS = 'SEEDS'
     FERTILIZERS = 'FERTILIZERS'
@@ -29,7 +30,7 @@ class ExpenseCategory(models.Model):
         (OTHER, 'Otros'),
     ]
     
-    name = models.CharField(max_length=50, choices=CATEGORY_CHOICES, unique=True)
+    name = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
 
@@ -38,11 +39,16 @@ class ExpenseCategory(models.Model):
         verbose_name = 'Categoría de Gasto'
         verbose_name_plural = 'Categorías de Gastos'
 
+    class Meta:
+        unique_together = [
+            ['organization', 'name'],
+        ]
+
     def __str__(self):
         return self.get_name_display()
 
 
-class FieldExpense(models.Model):
+class FieldExpense(TenantModel):
     """Gastos de campo por parcela"""
     parcel = models.ForeignKey(Parcel, on_delete=models.CASCADE,
                                related_name='field_expenses', verbose_name='Parcela')
@@ -93,7 +99,7 @@ class FieldExpense(models.Model):
         super().save(*args, **kwargs)
 
 
-class ParcelProfitability(models.Model):
+class ParcelProfitability(TenantModel):
     """Rentabilidad por parcela"""
     parcel = models.ForeignKey(Parcel, on_delete=models.CASCADE,
                                related_name='profitability_records', verbose_name='Parcela')

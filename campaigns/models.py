@@ -2,9 +2,10 @@ from django.db import models
 from partners.models import Partner
 from parcels.models import Parcel
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class Campaign(models.Model):
+class Campaign(TenantModel):
     """Campañas agrícolas"""
     PLANNING = 'PLANNING'
     ACTIVE = 'ACTIVE'
@@ -19,7 +20,7 @@ class Campaign(models.Model):
     ]
     
     # Información básica
-    code = models.CharField(max_length=50, unique=True, verbose_name='Código de campaña')
+    code = models.CharField(max_length=50, verbose_name='Código de campaña')
     name = models.CharField(max_length=200, verbose_name='Nombre')
     description = models.TextField(blank=True, verbose_name='Descripción')
     
@@ -56,6 +57,11 @@ class Campaign(models.Model):
             models.Index(fields=['code']),
             models.Index(fields=['status']),
             models.Index(fields=['start_date']),
+        ]
+
+    class Meta:
+        unique_together = [
+            ['organization', 'code'],
         ]
 
     def __str__(self):

@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    # Multi-tenancy
+    'tenants',
     # Apps del proyecto - Sprint 1
     'users',
     'partners',
@@ -83,6 +85,7 @@ MIDDLEWARE = [
     'config.disable_csrf.DisableCSRFMiddleware',  # Deshabilitar CSRF para APIs
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'tenants.middleware.TenantMiddleware',  # Multi-tenancy middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

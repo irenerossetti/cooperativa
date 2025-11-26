@@ -9,6 +9,8 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Multi-tenancy
+    path('api/tenants/', include('tenants.urls')),
     # Sprint 1
     path('api/auth/', include('users.urls')),
     path('api/partners/', include('partners.urls')),

@@ -1,8 +1,9 @@
 from django.db import models
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class InventoryCategory(models.Model):
+class InventoryCategory(TenantModel):
     """Categorías de inventario"""
     SEED = 'SEED'
     PESTICIDE = 'PESTICIDE'
@@ -18,7 +19,7 @@ class InventoryCategory(models.Model):
         (OTHER, 'Otro'),
     ]
     
-    name = models.CharField(max_length=50, choices=CATEGORY_CHOICES, unique=True, verbose_name='Categoría')
+    name = models.CharField(max_length=50, choices=CATEGORY_CHOICES, verbose_name='Categoría')
     description = models.TextField(blank=True, verbose_name='Descripción')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
@@ -30,14 +31,19 @@ class InventoryCategory(models.Model):
         verbose_name_plural = 'Categorías de Inventario'
         ordering = ['name']
 
+    class Meta:
+        unique_together = [
+            ['organization', 'name'],
+        ]
+
     def __str__(self):
         return self.get_name_display()
 
 
-class InventoryItem(models.Model):
+class InventoryItem(TenantModel):
     """Items de inventario (semillas, pesticidas, fertilizantes)"""
     # Información básica
-    code = models.CharField(max_length=50, unique=True, verbose_name='Código')
+    code = models.CharField(max_length=50, verbose_name='Código')
     name = models.CharField(max_length=200, verbose_name='Nombre')
     category = models.ForeignKey(InventoryCategory, on_delete=models.PROTECT,
                                  related_name='items', verbose_name='Categoría')
@@ -90,6 +96,11 @@ class InventoryItem(models.Model):
             models.Index(fields=['category']),
         ]
 
+    class Meta:
+        unique_together = [
+            ['organization', 'code'],
+        ]
+
     def __str__(self):
         return f"{self.code} - {self.name}"
 
@@ -108,7 +119,7 @@ class InventoryItem(models.Model):
         return 'NORMAL'
 
 
-class InventoryMovement(models.Model):
+class InventoryMovement(TenantModel):
     """Movimientos de inventario (entradas y salidas)"""
     ENTRY = 'ENTRY'
     EXIT = 'EXIT'
@@ -172,7 +183,7 @@ class InventoryMovement(models.Model):
             self.item.save()
 
 
-class StockAlert(models.Model):
+class StockAlert(TenantModel):
     """Alertas de stock mínimo"""
     item = models.ForeignKey(InventoryItem, on_delete=models.CASCADE,
                             related_name='alerts', verbose_name='Item')

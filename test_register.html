@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Organización - Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .result-content {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 Registrar Organización</h1>
+        <p class="subtitle">Sistema Multi-Tenant - Prueba de API</p>
+        
+        <form id="registerForm">
+            <div class="form-section">
+                <div class="section-title">📋 Datos de la Organización</div>
+                
+                <div class="form-group">
+                    <label for="organization_name">Nombre de la Cooperativa *</label>
+                    <input type="text" id="organization_name" name="organization_name" required 
+                           placeholder="Ej: Cooperativa San Pedro">
+                </div>
+                
+                <div class="form-group">
+                    <label for="subdomain">Subdominio * (solo letras minúsculas y números)</label>
+                    <input type="text" id="subdomain" name="subdomain" required 
+                           placeholder="Ej: sanpedro" pattern="[a-z0-9-]+">
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email de contacto *</label>
+                    <input type="email" id="email" name="email" required 
+                           placeholder="contacto@cooperativa.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Teléfono</label>
+                    <input type="tel" id="phone" name="phone" 
+                           placeholder="+591 3 1234567">
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <div class="section-title">👤 Datos del Usuario Administrador</div>
+                
+                <div class="form-group">
+                    <label for="username">Nombre de usuario *</label>
+                    <input type="text" id="username" name="username" required 
+                           placeholder="admin">
+                </div>
+                
+                <div class="form-group">
+                    <label for="user_email">Email del usuario *</label>
+                    <input type="email" id="user_email" name="user_email" required 
+                           placeholder="admin@cooperativa.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Contraseña * (mínimo 8 caracteres)</label>
+                    <input type="password" id="password" name="password" required 
+                           minlength="8" placeholder="••••••••">
+                </div>
+                
+                <div class="form-group">
+                    <label for="first_name">Nombre *</label>
+                    <input type="text" id="first_name" name="first_name" required 
+                           placeholder="Juan">
+                </div>
+                
+                <div class="form-group">
+                    <label for="last_name">Apellido *</label>
+                    <input type="text" id="last_name" name="last_name" required 
+                           placeholder="Pérez">
+                </div>
+            </div>
+            
+            <button type="submit">🚀 Registrar Organización</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #667eea;">Registrando...</p>
+        </div>
+        
+        <div class="result" id="result"></div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('registerForm');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Ocultar resultado anterior
+            result.style.display = 'none';
+            result.className = 'result';
+            
+            // Mostrar loading
+            loading.style.display = 'block';
+            
+            // Recopilar datos del formulario
+            const formData = new FormData(form);
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/tenants/register/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const responseData = await response.json();
+                
+                // Ocultar loading
+                loading.style.display = 'none';
+                
+                // Mostrar resultado
+                result.style.display = 'block';
+                
+                if (response.ok) {
+                    result.className = 'result success';
+                    result.innerHTML = `
+                        <div class="result-title">✅ ¡Organización registrada exitosamente!</div>
+                        <div class="result-content">
+                            <p><strong>Organización:</strong> ${responseData.organization.name}</p>
+                            <p><strong>Subdominio:</strong> ${responseData.organization.subdomain}</p>
+                            <p><strong>Plan:</strong> ${responseData.organization.plan}</p>
+                            <p><strong>Usuario:</strong> ${responseData.user.username}</p>
+                            <br>
+                            <p><strong>Puedes acceder con:</strong></p>
+                            <p>• Query: <code>?org=${responseData.organization.subdomain}</code></p>
+                            <p>• Header: <code>X-Organization-Subdomain: ${responseData.organization.subdomain}</code></p>
+                        </div>
+                    `;
+                    
+                    // Limpiar formulario
+                    form.reset();
+                } else {
+                    result.className = 'result error';
+                    let errorMessage = '<div class="result-title">❌ Error al registrar</div><div class="result-content">';
+                    
+                    if (typeof responseData === 'object') {
+                        for (const [key, value] of Object.entries(responseData)) {
+                            errorMessage += `<p><strong>${key}:</strong> ${Array.isArray(value) ? value.join(', ') : value}</p>`;
+                        }
+                    } else {
+                        errorMessage += `<p>${responseData}</p>`;
+                    }
+                    
+                    errorMessage += '</div>';
+                    result.innerHTML = errorMessage;
+                }
+            } catch (error) {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                result.className = 'result error';
+                result.innerHTML = `
+                    <div class="result-title">❌ Error de conexión</div>
+                    <div class="result-content">
+                        <p>No se pudo conectar al servidor. Asegúrate de que el servidor esté corriendo en:</p>
+                        <p><code>python manage.py runserver</code></p>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        });
+        
+        // Convertir subdomain a minúsculas automáticamente
+        document.getElementById('subdomain').addEventListener('input', (e) => {
+            e.target.value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+        });
+    </script>
+</body>
+</html>

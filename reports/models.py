@@ -3,9 +3,10 @@ from partners.models import Partner, Community
 from parcels.models import Parcel
 from campaigns.models import Campaign
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class ReportType(models.Model):
+class ReportType(TenantModel):
     """Tipos de reportes"""
     PERFORMANCE = 'PERFORMANCE'
     FINANCIAL = 'FINANCIAL'
@@ -23,7 +24,7 @@ class ReportType(models.Model):
         (CUSTOM, 'Personalizado'),
     ]
     
-    name = models.CharField(max_length=50, choices=TYPE_CHOICES, unique=True)
+    name = models.CharField(max_length=50, choices=TYPE_CHOICES)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
 
@@ -32,11 +33,16 @@ class ReportType(models.Model):
         verbose_name = 'Tipo de Reporte'
         verbose_name_plural = 'Tipos de Reportes'
 
+    class Meta:
+        unique_together = [
+            ['organization', 'name'],
+        ]
+
     def __str__(self):
         return self.get_name_display()
 
 
-class GeneratedReport(models.Model):
+class GeneratedReport(TenantModel):
     """Reportes generados"""
     PDF = 'PDF'
     EXCEL = 'EXCEL'

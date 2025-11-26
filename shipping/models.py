@@ -2,9 +2,10 @@ from django.db import models
 from sales.models import Order
 from partners.models import Community
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class Shipment(models.Model):
+class Shipment(TenantModel):
     """Envíos de pedidos"""
     PENDING = 'PENDING'
     SCHEDULED = 'SCHEDULED'
@@ -23,7 +24,7 @@ class Shipment(models.Model):
     ]
     
     # Información básica
-    shipment_number = models.CharField(max_length=50, unique=True, verbose_name='Número de envío')
+    shipment_number = models.CharField(max_length=50, verbose_name='Número de envío')
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='shipments',
                              verbose_name='Pedido')
     
@@ -68,6 +69,11 @@ class Shipment(models.Model):
             models.Index(fields=['shipment_number']),
             models.Index(fields=['order', 'status']),
             models.Index(fields=['scheduled_date']),
+        ]
+
+    class Meta:
+        unique_together = [
+            ['organization', 'shipment_number'],
         ]
 
     def __str__(self):

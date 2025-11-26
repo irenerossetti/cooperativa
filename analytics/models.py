@@ -1,8 +1,9 @@
 from django.db import models
 from production.models import HarvestedProduct
+from tenants.managers import TenantModel
 
 
-class PriceTrend(models.Model):
+class PriceTrend(TenantModel):
     """Tendencias de precios"""
     product_name = models.CharField(max_length=200)
     date = models.DateField()
@@ -36,7 +37,7 @@ class PriceTrend(models.Model):
         return f"{self.product_name} - {self.date} - {self.average_price}"
 
 
-class DemandTrend(models.Model):
+class DemandTrend(TenantModel):
     """Tendencias de demanda"""
     product_name = models.CharField(max_length=200)
     date = models.DateField()

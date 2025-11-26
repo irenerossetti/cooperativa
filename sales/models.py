@@ -4,9 +4,10 @@ from partners.models import Partner
 from campaigns.models import Campaign
 from production.models import HarvestedProduct
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class PaymentMethod(models.Model):
+class PaymentMethod(TenantModel):
     """Métodos de pago"""
     CASH = 'CASH'
     BANK_TRANSFER = 'BANK_TRANSFER'
@@ -26,7 +27,7 @@ class PaymentMethod(models.Model):
         (OTHER, 'Otro'),
     ]
     
-    name = models.CharField(max_length=50, choices=METHOD_CHOICES, unique=True, verbose_name='Método')
+    name = models.CharField(max_length=50, choices=METHOD_CHOICES, verbose_name='Método')
     description = models.TextField(blank=True, verbose_name='Descripción')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
     requires_reference = models.BooleanField(default=False, verbose_name='Requiere referencia')
@@ -39,17 +40,22 @@ class PaymentMethod(models.Model):
         verbose_name_plural = 'Métodos de Pago'
         ordering = ['name']
 
+    class Meta:
+        unique_together = [
+            ['organization', 'name'],
+        ]
+
     def __str__(self):
         return self.get_name_display()
 
 
-class Customer(models.Model):
+class Customer(TenantModel):
     """Clientes (pueden ser socios o externos)"""
     # Información básica
     name = models.CharField(max_length=200, verbose_name='Nombre/Razón Social')
     document_type = models.CharField(max_length=20, choices=[('CI', 'CI'), ('NIT', 'NIT'), ('PASSPORT', 'Pasaporte')],
                                      verbose_name='Tipo de documento')
-    document_number = models.CharField(max_length=50, unique=True, verbose_name='Número de documento')
+    document_number = models.CharField(max_length=50, verbose_name='Número de documento')
     
     # Contacto
     email = models.EmailField(blank=True, verbose_name='Correo electrónico')
@@ -79,11 +85,16 @@ class Customer(models.Model):
             models.Index(fields=['document_number']),
         ]
 
+    class Meta:
+        unique_together = [
+            ['organization', 'document_number'],
+        ]
+
     def __str__(self):
         return f"{self.name} - {self.document_number}"
 
 
-class Order(models.Model):
+class Order(TenantModel):
     """Pedidos de venta"""
     DRAFT = 'DRAFT'
     CONFIRMED = 'CONFIRMED'
@@ -102,7 +113,7 @@ class Order(models.Model):
     ]
     
     # Información básica
-    order_number = models.CharField(max_length=50, unique=True, verbose_name='Número de pedido')
+    order_number = models.CharField(max_length=50, verbose_name='Número de pedido')
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='orders',
                                  verbose_name='Cliente')
     campaign = models.ForeignKey(Campaign, on_delete=models.PROTECT, related_name='orders',
@@ -147,6 +158,11 @@ class Order(models.Model):
             models.Index(fields=['status']),
         ]
 
+    class Meta:
+        unique_together = [
+            ['organization', 'order_number'],
+        ]
+
     def __str__(self):
         return f"{self.order_number} - {self.customer.name}"
 
@@ -168,7 +184,7 @@ class Order(models.Model):
         return sum(item.quantity for item in self.items.all())
 
 
-class OrderItem(models.Model):
+class OrderItem(TenantModel):
     """Items de pedido"""
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items',
                              verbose_name='Pedido')
@@ -204,7 +220,7 @@ class OrderItem(models.Model):
         self.order.calculate_totals()
 
 
-class Payment(models.Model):
+class Payment(TenantModel):
     """Pagos de pedidos"""
     PENDING = 'PENDING'
     COMPLETED = 'COMPLETED'

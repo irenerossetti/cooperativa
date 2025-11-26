@@ -1,11 +1,12 @@
 from django.db import models
 from partners.models import Partner
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class SoilType(models.Model):
+class SoilType(TenantModel):
     """Tipos de suelo"""
-    name = models.CharField(max_length=100, unique=True, verbose_name='Nombre')
+    name = models.CharField(max_length=100, verbose_name='Nombre')
     description = models.TextField(blank=True, verbose_name='Descripción')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
@@ -17,13 +18,18 @@ class SoilType(models.Model):
         verbose_name_plural = 'Tipos de Suelo'
         ordering = ['name']
 
+    class Meta:
+        unique_together = [
+            ['organization', 'name'],
+        ]
+
     def __str__(self):
         return self.name
 
 
-class Crop(models.Model):
+class Crop(TenantModel):
     """Cultivos"""
-    name = models.CharField(max_length=100, unique=True, verbose_name='Nombre')
+    name = models.CharField(max_length=100, verbose_name='Nombre')
     scientific_name = models.CharField(max_length=200, blank=True, verbose_name='Nombre científico')
     description = models.TextField(blank=True, verbose_name='Descripción')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
@@ -36,11 +42,16 @@ class Crop(models.Model):
         verbose_name_plural = 'Cultivos'
         ordering = ['name']
 
+    class Meta:
+        unique_together = [
+            ['organization', 'name'],
+        ]
+
     def __str__(self):
         return self.name
 
 
-class Parcel(models.Model):
+class Parcel(TenantModel):
     """Parcelas de los socios"""
     ACTIVE = 'ACTIVE'
     INACTIVE = 'INACTIVE'
@@ -51,7 +62,7 @@ class Parcel(models.Model):
     ]
     
     # Información básica
-    code = models.CharField(max_length=50, unique=True, verbose_name='Código de parcela')
+    code = models.CharField(max_length=50, verbose_name='Código de parcela')
     name = models.CharField(max_length=200, verbose_name='Nombre')
     surface = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Superficie (hectáreas)')
     
@@ -83,6 +94,11 @@ class Parcel(models.Model):
         indexes = [
             models.Index(fields=['code']),
             models.Index(fields=['partner']),
+        ]
+
+    class Meta:
+        unique_together = [
+            ['organization', 'code'],
         ]
 
     def __str__(self):

@@ -1,0 +1,163 @@
+from django.db import models
+from django.core.validators import MinValueValidator
+from parcels.models import Parcel
+from campaigns.models import Campaign
+from farm_activities.models import FarmActivity
+from inventory.models import InventoryItem
+from users.models import User
+
+
+class ExpenseCategory(models.Model):
+    """Categorías de gastos"""
+    SEEDS = 'SEEDS'
+    FERTILIZERS = 'FERTILIZERS'
+    PESTICIDES = 'PESTICIDES'
+    LABOR = 'LABOR'
+    MACHINERY = 'MACHINERY'
+    IRRIGATION = 'IRRIGATION'
+    TRANSPORT = 'TRANSPORT'
+    OTHER = 'OTHER'
+    
+    CATEGORY_CHOICES = [
+        (SEEDS, 'Semillas'),
+        (FERTILIZERS, 'Fertilizantes'),
+        (PESTICIDES, 'Pesticidas'),
+        (LABOR, 'Mano de Obra'),
+        (MACHINERY, 'Maquinaria'),
+        (IRRIGATION, 'Riego'),
+        (TRANSPORT, 'Transporte'),
+        (OTHER, 'Otros'),
+    ]
+    
+    name = models.CharField(max_length=50, choices=CATEGORY_CHOICES, unique=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'expense_categories'
+        verbose_name = 'Categoría de Gasto'
+        verbose_name_plural = 'Categorías de Gastos'
+
+    def __str__(self):
+        return self.get_name_display()
+
+
+class FieldExpense(models.Model):
+    """Gastos de campo por parcela"""
+    parcel = models.ForeignKey(Parcel, on_delete=models.CASCADE,
+                               related_name='field_expenses', verbose_name='Parcela')
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE,
+                                 related_name='field_expenses', verbose_name='Campaña')
+    category = models.ForeignKey(ExpenseCategory, on_delete=models.PROTECT,
+                                 related_name='expenses', verbose_name='Categoría')
+    
+    # Detalles
+    description = models.CharField(max_length=200, verbose_name='Descripción')
+    expense_date = models.DateField(verbose_name='Fecha del gasto')
+    
+    # Montos
+    quantity = models.DecimalField(max_digits=10, decimal_places=2,
+                                   validators=[MinValueValidator(0)], verbose_name='Cantidad')
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2,
+                                    validators=[MinValueValidator(0)], verbose_name='Costo unitario')
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2,
+                                     validators=[MinValueValidator(0)], verbose_name='Costo total')
+    
+    # Relaciones opcionales
+    farm_activity = models.ForeignKey(FarmActivity, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='expenses', verbose_name='Labor relacionada')
+    inventory_item = models.ForeignKey(InventoryItem, on_delete=models.SET_NULL, null=True, blank=True,
+                                       related_name='expenses', verbose_name='Insumo relacionado')
+    
+    # Metadatos
+    notes = models.TextField(blank=True, verbose_name='Notas')
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                   related_name='created_expenses')
+
+    class Meta:
+        db_table = 'field_expenses'
+        verbose_name = 'Gasto de Campo'
+        verbose_name_plural = 'Gastos de Campo'
+        ordering = ['-expense_date']
+        indexes = [
+            models.Index(fields=['parcel', 'campaign']),
+            models.Index(fields=['expense_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.parcel.code} - {self.description} - {self.total_cost}"
+
+    def save(self, *args, **kwargs):
+        self.total_cost = self.quantity * self.unit_cost
+        super().save(*args, **kwargs)
+
+
+class ParcelProfitability(models.Model):
+    """Rentabilidad por parcela"""
+    parcel = models.ForeignKey(Parcel, on_delete=models.CASCADE,
+                               related_name='profitability_records', verbose_name='Parcela')
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE,
+                                 related_name='profitability_records', verbose_name='Campaña')
+    
+    # Ingresos
+    total_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0,
+                                       verbose_name='Ingresos totales')
+    total_production = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                          verbose_name='Producción total (kg)')
+    average_price = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                       verbose_name='Precio promedio')
+    
+    # Costos
+    total_expenses = models.DecimalField(max_digits=12, decimal_places=2, default=0,
+                                        verbose_name='Gastos totales')
+    seed_costs = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    fertilizer_costs = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    pesticide_costs = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    labor_costs = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    other_costs = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Rentabilidad
+    gross_profit = models.DecimalField(max_digits=12, decimal_places=2, default=0,
+                                      verbose_name='Utilidad bruta')
+    profit_margin = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                                       verbose_name='Margen de utilidad (%)')
+    roi = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                             verbose_name='ROI (%)')
+    
+    # Métricas
+    cost_per_hectare = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                          verbose_name='Costo por hectárea')
+    revenue_per_hectare = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                             verbose_name='Ingreso por hectárea')
+    yield_per_hectare = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                           verbose_name='Rendimiento por hectárea (kg/ha)')
+    
+    # Metadatos
+    calculated_at = models.DateTimeField(auto_now=True, verbose_name='Calculado el')
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'parcel_profitability'
+        verbose_name = 'Rentabilidad de Parcela'
+        verbose_name_plural = 'Rentabilidad de Parcelas'
+        ordering = ['-calculated_at']
+        unique_together = ['parcel', 'campaign']
+
+    def __str__(self):
+        return f"{self.parcel.code} - {self.campaign.name} - ROI: {self.roi}%"
+
+    def calculate_profitability(self):
+        """Calcular métricas de rentabilidad"""
+        self.gross_profit = self.total_revenue - self.total_expenses
+        
+        if self.total_expenses > 0:
+            self.profit_margin = (self.gross_profit / self.total_revenue) * 100 if self.total_revenue > 0 else 0
+            self.roi = (self.gross_profit / self.total_expenses) * 100
+        
+        if self.parcel.surface > 0:
+            self.cost_per_hectare = self.total_expenses / self.parcel.surface
+            self.revenue_per_hectare = self.total_revenue / self.parcel.surface
+            self.yield_per_hectare = self.total_production / self.parcel.surface
+        
+        self.save()

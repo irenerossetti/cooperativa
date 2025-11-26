@@ -2,9 +2,10 @@ from django.db import models
 from partners.models import Partner
 from inventory.models import InventoryItem
 from users.models import User
+from tenants.managers import TenantModel
 
 
-class RequestType(models.Model):
+class RequestType(TenantModel):
     """Tipos de solicitud"""
     SEED = 'SEED'
     PESTICIDE = 'PESTICIDE'
@@ -22,7 +23,7 @@ class RequestType(models.Model):
         (OTHER, 'Otro'),
     ]
     
-    name = models.CharField(max_length=50, choices=TYPE_CHOICES, unique=True, verbose_name='Tipo')
+    name = models.CharField(max_length=50, choices=TYPE_CHOICES, verbose_name='Tipo')
     description = models.TextField(blank=True, verbose_name='Descripción')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
@@ -34,11 +35,16 @@ class RequestType(models.Model):
         verbose_name_plural = 'Tipos de Solicitud'
         ordering = ['name']
 
+    class Meta:
+        unique_together = [
+            ['organization', 'name'],
+        ]
+
     def __str__(self):
         return self.get_name_display()
 
 
-class PartnerRequest(models.Model):
+class PartnerRequest(TenantModel):
     """Solicitudes de socios"""
     PENDING = 'PENDING'
     IN_REVIEW = 'IN_REVIEW'
@@ -59,7 +65,7 @@ class PartnerRequest(models.Model):
     ]
     
     # Información básica
-    request_number = models.CharField(max_length=50, unique=True, verbose_name='Número de solicitud')
+    request_number = models.CharField(max_length=50, verbose_name='Número de solicitud')
     partner = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name='requests',
                                 verbose_name='Socio')
     request_type = models.ForeignKey(RequestType, on_delete=models.PROTECT,
@@ -110,11 +116,16 @@ class PartnerRequest(models.Model):
             models.Index(fields=['status', 'priority']),
         ]
 
+    class Meta:
+        unique_together = [
+            ['organization', 'request_number'],
+        ]
+
     def __str__(self):
         return f"{self.request_number} - {self.partner.full_name}"
 
 
-class RequestItem(models.Model):
+class RequestItem(TenantModel):
     """Items de solicitud"""
     request = models.ForeignKey(PartnerRequest, on_delete=models.CASCADE,
                                 related_name='request_items', verbose_name='Solicitud')
@@ -133,7 +144,7 @@ class RequestItem(models.Model):
         return f"{self.request.request_number} - {self.item.name}"
 
 
-class RequestAttachment(models.Model):
+class RequestAttachment(TenantModel):
     """Adjuntos de solicitudes"""
     request = models.ForeignKey(PartnerRequest, on_delete=models.CASCADE,
                                 related_name='attachments', verbose_name='Solicitud')
