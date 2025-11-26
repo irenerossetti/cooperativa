@@ -1,0 +1,6 @@
+# Ignorar modelos entrenados (son archivos grandes)
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
