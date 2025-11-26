@@ -1,12 +1,11 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import WeatherDataViewSet, WeatherForecastViewSet, WeatherAlertViewSet
+from django.urls import path
+from . import views
 
-router = DefaultRouter()
-router.register(r'data', WeatherDataViewSet, basename='weather-data')
-router.register(r'forecast', WeatherForecastViewSet, basename='weather-forecast')
-router.register(r'alerts', WeatherAlertViewSet, basename='weather-alert')
+app_name = 'weather'
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('current/', views.get_current_weather, name='current'),
+    path('forecast/', views.get_forecast, name='forecast'),
+    path('agricultural/', views.get_agricultural_data, name='agricultural'),
+    path('parcel/<int:parcel_id>/', views.get_weather_by_parcel, name='by_parcel'),
 ]
