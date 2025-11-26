@@ -110,6 +110,95 @@ class UserViewSet(AuditMixin, viewsets.ModelViewSet):
         return Response({'message': 'Usuario activado exitosamente'})
     
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def register(self, request):
+        """Registrar nuevo usuario"""
+        try:
+            # Validar datos requeridos
+            required_fields = ['username', 'email', 'password', 'first_name', 'last_name']
+            for field in required_fields:
+                if field not in request.data or not request.data[field]:
+                    return Response(
+                        {'error': f'El campo {field} es requerido'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            # Validar que el username no exista
+            if User.objects.filter(username=request.data['username']).exists():
+                return Response(
+                    {'error': 'El nombre de usuario ya existe'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validar que el email no exista
+            if User.objects.filter(email=request.data['email']).exists():
+                return Response(
+                    {'error': 'El email ya está registrado'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Determinar rol según tipo de registro
+            register_type = request.data.get('register_type', 'cliente')
+            plan = request.data.get('plan', None)
+            
+            # Obtener rol
+            role = None
+            try:
+                if register_type == 'socio':
+                    role = Role.objects.filter(name='SOCIO', is_active=True).first()
+                else:
+                    role = Role.objects.filter(name='CLIENTE', is_active=True).first()
+                
+                if not role:
+                    role = Role.objects.filter(is_active=True).first()
+            except Exception as e:
+                print(f"Error al obtener rol: {e}")
+            
+            # Crear usuario
+            user = User.objects.create_user(
+                username=request.data['username'],
+                email=request.data['email'],
+                password=request.data['password'],
+                first_name=request.data['first_name'],
+                last_name=request.data['last_name'],
+                role=role
+            )
+            
+            # Registrar en auditoría
+            try:
+                from audit.mixins import get_client_ip, get_user_agent
+                description = f"Usuario {user.username} se registró como {register_type.upper()}"
+                if plan:
+                    description += f" con plan {plan}"
+                
+                AuditLog.objects.create(
+                    user=user,
+                    action=AuditLog.CREATE,
+                    model_name='User',
+                    object_id=user.id,
+                    description=description,
+                    ip_address=get_client_ip(request),
+                    user_agent=get_user_agent(request)
+                )
+            except Exception as e:
+                print(f"Error al crear log de auditoría: {e}")
+            
+            return Response({
+                'message': 'Usuario registrado exitosamente',
+                'user': UserSerializer(user).data,
+                'register_type': register_type,
+                'plan': plan
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"Error en registro: {e}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': f'Error al registrar usuario: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def login(self, request):
         """Iniciar sesión con username o email"""
         serializer = LoginSerializer(data=request.data)
@@ -176,15 +265,19 @@ class UserViewSet(AuditMixin, viewsets.ModelViewSet):
         
         login(request, user)
         
-        # Registrar login en auditoría
-        from audit.mixins import get_client_ip, get_user_agent
-        AuditLog.objects.create(
-            user=user,
-            action=AuditLog.LOGIN,
-            description=f"Usuario {user.username} inició sesión",
-            ip_address=get_client_ip(request),
-            user_agent=get_user_agent(request)
-        )
+        # Registrar login en auditoría (opcional si no hay organización)
+        try:
+            from audit.mixins import get_client_ip, get_user_agent
+            AuditLog.objects.create(
+                user=user,
+                action=AuditLog.LOGIN,
+                description=f"Usuario {user.username} inició sesión",
+                ip_address=get_client_ip(request),
+                user_agent=get_user_agent(request)
+            )
+        except Exception as e:
+            # Si falla el log de auditoría, continuar igual
+            print(f"Error logging audit: {e}")
         
         return Response({
             'message': 'Inicio de sesión exitoso',
@@ -197,15 +290,18 @@ class UserViewSet(AuditMixin, viewsets.ModelViewSet):
         user = request.user
         username = user.username if user.is_authenticated else 'unknown'
         
-        # Registrar logout en auditoría antes de cerrar sesión
-        from audit.mixins import get_client_ip, get_user_agent
-        AuditLog.objects.create(
-            user=user,
-            action=AuditLog.LOGOUT,
-            description=f"Usuario {username} cerró sesión",
-            ip_address=get_client_ip(request),
-            user_agent=get_user_agent(request)
-        )
+        # Registrar logout en auditoría antes de cerrar sesión (opcional)
+        try:
+            from audit.mixins import get_client_ip, get_user_agent
+            AuditLog.objects.create(
+                user=user,
+                action=AuditLog.LOGOUT,
+                description=f"Usuario {username} cerró sesión",
+                ip_address=get_client_ip(request),
+                user_agent=get_user_agent(request)
+            )
+        except Exception as e:
+            print(f"Error logging audit: {e}")
         
         logout(request)
         return Response({'message': 'Sesión cerrada exitosamente'})

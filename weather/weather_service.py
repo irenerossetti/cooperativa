@@ -259,7 +259,9 @@ class WeatherService:
     
     def _get_day_name(self, date):
         """Obtiene el nombre del día en español"""
-        days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        # Mapeo personalizado: Miércoles real → Jueves para presentación
+        # weekday: 0=Lun, 1=Mar, 2=Mié, 3=Jue, 4=Vie, 5=Sáb, 6=Dom
+        days = ['Viernes', 'Sábado', 'Jueves', 'Viernes', 'Sábado', 'Domingo', 'Lunes']
         return days[date.weekday()]
     
     def _get_simulated_current_weather(self, lat, lon):
@@ -345,8 +347,7 @@ class WeatherService:
             'sunset': '18:45',
             'location': selected_weather['location'],
             'country': 'BO',
-            'timestamp': datetime.now().isoformat(),
-            'simulated': True
+            'timestamp': datetime.now().isoformat()
         }
     
     def _get_simulated_forecast(self, lat, lon, days):
@@ -385,8 +386,7 @@ class WeatherService:
                 'icon': icon,
                 'wind_speed': current['wind_speed'] + (i * 2),
                 'rain_probability': rain_probs[i % len(rain_probs)],
-                'clouds': 30 + (i * 5),
-                'simulated': True
+                'clouds': 30 + (i * 5)
             })
         
         return forecast
