@@ -201,6 +201,8 @@ class UserViewSet(AuditMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def login(self, request):
         """Iniciar sesión con username o email"""
+        from rest_framework_simplejwt.tokens import RefreshToken
+        
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -265,6 +267,11 @@ class UserViewSet(AuditMixin, viewsets.ModelViewSet):
         
         login(request, user)
         
+        # Generar tokens JWT
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        
         # Registrar login en auditoría (opcional si no hay organización)
         try:
             from audit.mixins import get_client_ip, get_user_agent
@@ -281,7 +288,9 @@ class UserViewSet(AuditMixin, viewsets.ModelViewSet):
         
         return Response({
             'message': 'Inicio de sesión exitoso',
-            'user': UserSerializer(user).data
+            'user': UserSerializer(user).data,
+            'access': access_token,
+            'refresh': refresh_token
         })
     
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
