@@ -163,6 +163,33 @@ class UserViewSet(AuditMixin, viewsets.ModelViewSet):
                 role=role
             )
             
+            # Crear Partner automáticamente si hay organización
+            from partners.models import Partner
+            from tenants.models import Organization
+            
+            org_subdomain = request.headers.get('X-Organization-Subdomain') or request.GET.get('org')
+            if org_subdomain:
+                try:
+                    organization = Organization.objects.get(subdomain=org_subdomain, is_active=True)
+                    
+                    # Crear partner para este usuario en esta organización
+                    Partner.objects.create(
+                        user=user,
+                        organization=organization,
+                        ci=request.data.get('ci', ''),
+                        first_name=user.first_name,
+                        last_name=user.last_name,
+                        email=user.email,
+                        phone=request.data.get('phone', ''),
+                        address=request.data.get('address', ''),
+                        is_active=True
+                    )
+                    print(f"Partner creado para {user.username} en {organization.name}")
+                except Organization.DoesNotExist:
+                    print(f"Organización {org_subdomain} no encontrada")
+                except Exception as e:
+                    print(f"Error al crear partner: {e}")
+            
             # Registrar en auditoría
             try:
                 from audit.mixins import get_client_ip, get_user_agent
@@ -254,11 +281,27 @@ class UserViewSet(AuditMixin, viewsets.ModelViewSet):
                     ).exists()
                     
                     if not has_access:
-                        return Response(
-                            {'error': 'Acceso denegado',
-                             'detail': f'No tienes acceso a {organization.name}'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
+                        # Crear partner automáticamente si no existe
+                        try:
+                            Partner.objects.create(
+                                user=user,
+                                organization=organization,
+                                ci='',
+                                first_name=user.first_name,
+                                last_name=user.last_name,
+                                email=user.email,
+                                phone='',
+                                address='',
+                                is_active=True
+                            )
+                            print(f"Partner creado automáticamente para {user.username} en {organization.name}")
+                        except Exception as e:
+                            print(f"Error al crear partner automático: {e}")
+                            return Response(
+                                {'error': 'Acceso denegado',
+                                 'detail': f'No tienes acceso a {organization.name}'},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
             except Organization.DoesNotExist:
                 return Response(
                     {'error': 'Organización no encontrada'},
