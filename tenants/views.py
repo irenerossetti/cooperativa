@@ -314,7 +314,6 @@ def super_admin_organization_detail(request, org_id):
 
 
 @api_view(['PUT'])
-@authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsSuperAdmin])
 def super_admin_update_organization(request, org_id):
     """
@@ -354,7 +353,6 @@ def super_admin_update_organization(request, org_id):
 
 
 @api_view(['DELETE'])
-@authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsSuperAdmin])
 def super_admin_delete_organization(request, org_id):
     """
@@ -379,7 +377,6 @@ def super_admin_delete_organization(request, org_id):
 
 
 @api_view(['POST'])
-@authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsSuperAdmin])
 def super_admin_create_organization(request):
     """
