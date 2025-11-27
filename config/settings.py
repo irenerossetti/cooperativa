@@ -37,6 +37,7 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     '0.0.0.0',
     'testserver',  # Para tests de Django REST Framework
+    '.onrender.com',  # Para Render
 ]
 
 
@@ -87,6 +88,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # CORS middleware (must be first)
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Whitenoise for static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'config.disable_csrf.DisableCSRFMiddleware',  # Deshabilitar CSRF para APIs
@@ -97,18 +99,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# CORS settings - Permitir todos los orígenes en desarrollo
-CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",
-#     "http://127.0.0.1:3000",
-#     "http://localhost:5173",
-#     "http://127.0.0.1:5173",
-#     "http://localhost:5174",
-#     "http://127.0.0.1:5174",
-#     "http://localhost:8000",
-#     "http://127.0.0.1:8000",
-# ]
+# CORS settings
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
+else:
+    # En producción, especificar orígenes permitidos
+    CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
+    if not CORS_ALLOWED_ORIGINS or CORS_ALLOWED_ORIGINS == ['']:
+        CORS_ALLOW_ALL_ORIGINS = True  # Fallback si no se configura
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
@@ -211,7 +209,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
