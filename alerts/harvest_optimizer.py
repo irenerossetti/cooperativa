@@ -22,15 +22,35 @@ class HarvestOptimizer:
         self.weather_service = WeatherService()
         self.market_service = MarketAnalysisService(organization)
     
+    def get_planting_date(self, parcel):
+        """Obtiene la fecha de siembra de la parcela desde farm_activities"""
+        from farm_activities.models import FarmActivity
+        
+        # Buscar la actividad de siembra más reciente para esta parcela
+        planting_activity = FarmActivity.objects.filter(
+            parcel=parcel,
+            activity_type='SIEMBRA'
+        ).order_by('-activity_date').first()
+        
+        if planting_activity:
+            return planting_activity.activity_date
+        
+        # Si no hay actividad de siembra, usar fecha de creación de la parcela como aproximación
+        return parcel.created_at.date() if hasattr(parcel.created_at, 'date') else parcel.created_at
+    
     def calculate_maturation_score(self, parcel):
         """Calcula score de maduración (0-100)"""
-        if not parcel.planting_date or not parcel.current_crop:
+        if not parcel.current_crop:
+            return 0
+        
+        planting_date = self.get_planting_date(parcel)
+        if not planting_date:
             return 0
         
         crop_name = parcel.current_crop.name.upper()
         expected_days = self.MATURATION_DAYS.get(crop_name, 120)
         
-        days_since_planting = (date.today() - parcel.planting_date).days
+        days_since_planting = (date.today() - planting_date).days
         
         # Score basado en proximidad a días esperados
         if days_since_planting < expected_days * 0.8:
@@ -126,12 +146,22 @@ class HarvestOptimizer:
     def calculate_optimal_harvest(self, parcel):
         """Calcula el momento óptimo de cosecha para una parcela"""
         
-        if not parcel.current_crop or not parcel.planting_date:
+        if not parcel.current_crop:
             return {
                 'parcel_id': parcel.id,
                 'parcel_code': parcel.code,
                 'status': 'NO_DATA',
-                'message': 'Parcela sin cultivo activo o fecha de siembra',
+                'message': 'Parcela sin cultivo activo',
+                'overall_score': 0
+            }
+        
+        planting_date = self.get_planting_date(parcel)
+        if not planting_date:
+            return {
+                'parcel_id': parcel.id,
+                'parcel_code': parcel.code,
+                'status': 'NO_DATA',
+                'message': 'No se encontró fecha de siembra',
                 'overall_score': 0
             }
         
@@ -176,7 +206,7 @@ class HarvestOptimizer:
             urgency = 'LOW'
         
         # Calcular fecha estimada óptima
-        days_since_planting = (date.today() - parcel.planting_date).days
+        days_since_planting = (date.today() - planting_date).days
         crop_name = parcel.current_crop.name.upper()
         expected_days = self.MATURATION_DAYS.get(crop_name, 120)
         
@@ -190,7 +220,7 @@ class HarvestOptimizer:
             'parcel_id': parcel.id,
             'parcel_code': parcel.code,
             'crop_name': parcel.current_crop.name,
-            'planting_date': parcel.planting_date.isoformat(),
+            'planting_date': planting_date.isoformat(),
             'days_since_planting': days_since_planting,
             'scores': {
                 'maturation': round(maturation_score, 1),
