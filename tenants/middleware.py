@@ -33,6 +33,7 @@ class TenantMiddleware(MiddlewareMixin):
             '/admin/',
             '/api/tenants/register/',
             '/api/tenants/my-organizations/',
+            '/api/tenants/super-admin/',  # Rutas del super admin
         ]
         is_public = any(request.path.startswith(path) for path in public_paths)
         
