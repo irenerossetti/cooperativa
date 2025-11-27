@@ -24,16 +24,26 @@ class HarvestOptimizer:
     
     def get_planting_date(self, parcel):
         """Obtiene la fecha de siembra de la parcela desde farm_activities"""
-        from farm_activities.models import FarmActivity
+        from farm_activities.models import FarmActivity, ActivityType
         
-        # Buscar la actividad de siembra más reciente para esta parcela
-        planting_activity = FarmActivity.objects.filter(
-            parcel=parcel,
-            activity_type='SIEMBRA'
-        ).order_by('-activity_date').first()
-        
-        if planting_activity:
-            return planting_activity.activity_date
+        # Buscar el tipo de actividad de siembra
+        try:
+            sowing_type = ActivityType.objects.filter(
+                organization=self.organization,
+                name='SOWING'
+            ).first()
+            
+            if sowing_type:
+                # Buscar la actividad de siembra más reciente para esta parcela
+                planting_activity = FarmActivity.objects.filter(
+                    parcel=parcel,
+                    activity_type=sowing_type
+                ).order_by('-activity_date').first()
+                
+                if planting_activity:
+                    return planting_activity.activity_date
+        except Exception as e:
+            print(f"Error buscando fecha de siembra: {e}")
         
         # Si no hay actividad de siembra, usar fecha de creación de la parcela como aproximación
         return parcel.created_at.date() if hasattr(parcel.created_at, 'date') else parcel.created_at

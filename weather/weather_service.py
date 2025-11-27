@@ -16,7 +16,7 @@ class WeatherService:
     def __init__(self):
         self.api_key = os.getenv('OPENWEATHER_API_KEY')
         if not self.api_key:
-            print("⚠️ OPENWEATHER_API_KEY no configurada - usando datos simulados")
+            print("[!] OPENWEATHER_API_KEY no configurada - usando datos simulados")
     
     def get_current_weather(self, lat, lon):
         """
