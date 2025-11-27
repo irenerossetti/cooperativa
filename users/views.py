@@ -272,9 +272,12 @@ class UserViewSet(AuditMixin, viewsets.ModelViewSet):
             try:
                 organization = Organization.objects.get(subdomain=org_subdomain, is_active=True)
                 
-                # Si no es ADMIN, validar que tenga partner en esta organización
+                # Si es ADMIN o el usuario 'admin', tiene acceso a todas las organizaciones
                 is_admin = user.role and user.role.name == 'ADMIN'
-                if not is_admin:
+                is_admin_user = user.username == 'admin'
+                
+                if not is_admin and not is_admin_user:
+                    # Para usuarios CUSTOMER/PARTNER, validar que tengan partner en esta organización
                     has_access = Partner.objects.all_organizations().filter(
                         organization=organization,
                         user=user
@@ -302,6 +305,29 @@ class UserViewSet(AuditMixin, viewsets.ModelViewSet):
                                  'detail': f'No tienes acceso a {organization.name}'},
                                 status=status.HTTP_403_FORBIDDEN
                             )
+                elif is_admin or is_admin_user:
+                    # Para usuarios ADMIN o 'admin', crear partner si no existe
+                    has_partner = Partner.objects.all_organizations().filter(
+                        organization=organization,
+                        user=user
+                    ).exists()
+                    
+                    if not has_partner:
+                        try:
+                            Partner.objects.create(
+                                user=user,
+                                organization=organization,
+                                ci='',
+                                first_name=user.first_name,
+                                last_name=user.last_name,
+                                email=user.email,
+                                phone='',
+                                address='',
+                                is_active=True
+                            )
+                            print(f"Partner ADMIN creado para {user.username} en {organization.name}")
+                        except Exception as e:
+                            print(f"Error al crear partner admin: {e}")
             except Organization.DoesNotExist:
                 return Response(
                     {'error': 'Organización no encontrada'},
