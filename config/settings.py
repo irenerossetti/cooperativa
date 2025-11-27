@@ -104,8 +104,10 @@ if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
 else:
     # En producción, especificar orígenes permitidos
-    CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
-    if not CORS_ALLOWED_ORIGINS or CORS_ALLOWED_ORIGINS == ['']:
+    cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
+    if cors_origins:
+        CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+    else:
         CORS_ALLOW_ALL_ORIGINS = True  # Fallback si no se configura
 
 CORS_ALLOW_CREDENTIALS = True
