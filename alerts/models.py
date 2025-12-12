@@ -7,6 +7,7 @@ class Alert(TenantModel):
     """Modelo para alertas del sistema"""
     
     ALERT_TYPES = [
+        ('STOCK', 'Stock Bajo'),
         ('WEATHER', 'Clima Adverso'),
         ('PRICE', 'Precio de Mercado'),
         ('HARVEST', 'Momento de Cosecha'),

@@ -83,6 +83,13 @@ INSTALLED_APPS = [
     'market_analysis',
     # Alerts
     'alerts',
+    # Nuevas funcionalidades
+    'notifications',
+    'qr_codes',
+    'dashboard',
+    'ai_chat',
+    'events',
+    'goals',
 ]
 
 MIDDLEWARE = [
@@ -225,3 +232,6 @@ AUTH_USER_MODEL = 'users.User'
 
 # OpenWeatherMap API Configuration
 OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY', None)
+
+# OpenRouter API Configuration (AI Chat)
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', None)

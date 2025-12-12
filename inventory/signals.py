@@ -10,5 +10,6 @@ def check_stock_alert(sender, instance, **kwargs):
         StockAlert.objects.create(
             item=instance,
             current_stock=instance.current_stock,
-            minimum_stock=instance.minimum_stock
+            minimum_stock=instance.minimum_stock,
+            organization=instance.organization
         )

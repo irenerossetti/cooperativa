@@ -41,4 +41,11 @@ urlpatterns = [
     path('api/market/', include('market_analysis.urls')),
     # Alerts
     path('api/alerts/', include('alerts.urls')),
+    # Nuevas funcionalidades
+    path('api/notifications/', include('notifications.urls')),
+    path('api/qr-codes/', include('qr_codes.urls')),
+    path('api/dashboard/', include('dashboard.urls')),
+    path('api/ai-chat/', include('ai_chat.urls')),
+    path('api/events/', include('events.urls')),
+    path('api/goals/', include('goals.urls')),
 ]

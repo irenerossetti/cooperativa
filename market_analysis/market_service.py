@@ -65,10 +65,12 @@ class MarketAnalysisService:
         return trends
     
     def get_price_alerts(self):
-        """Genera alertas de precio basadas en tendencias"""
+        """Genera alertas de precio basadas en tendencias y datos de mercado"""
         
-        trends = self.get_market_trends()
         alerts = []
+        
+        # Primero intentar con tendencias de producción
+        trends = self.get_market_trends()
         
         for trend in trends:
             variation = trend['variation']
@@ -101,6 +103,60 @@ class MarketAnalysisService:
                     'recommendation': 'Considerar venta en corto plazo',
                     'priority': 'low'
                 })
+        
+        # Si no hay alertas de producción, usar datos de MarketPrice
+        if not alerts:
+            from django.db.models import F
+            from datetime import date, timedelta
+            
+            today = date.today()
+            yesterday = today - timedelta(days=1)
+            
+            # Obtener precios de hoy y ayer
+            for product_type in ['QUINUA', 'MAIZ', 'PAPA', 'TRIGO', 'CEBADA']:
+                today_price = MarketPrice.objects.filter(
+                    organization=self.organization,
+                    product_type=product_type,
+                    date=today
+                ).first()
+                
+                yesterday_price = MarketPrice.objects.filter(
+                    organization=self.organization,
+                    product_type=product_type,
+                    date=yesterday
+                ).first()
+                
+                if today_price and yesterday_price:
+                    variation = ((float(today_price.price_per_kg) - float(yesterday_price.price_per_kg)) / float(yesterday_price.price_per_kg)) * 100
+                    product_name = dict(MarketPrice.PRODUCT_TYPES).get(product_type, product_type)
+                    
+                    if variation > 10:
+                        alerts.append({
+                            'type': 'HIGH',
+                            'product': product_name,
+                            'message': f'Precio en alza. Momento óptimo para venta.',
+                            'variation': variation,
+                            'recommendation': f'Vender ahora puede generar hasta {abs(variation):.1f}% más de ganancia',
+                            'priority': 'high'
+                        })
+                    elif variation < -8:
+                        alerts.append({
+                            'type': 'LOW',
+                            'product': product_name,
+                            'message': f'Precio por debajo del promedio.',
+                            'variation': variation,
+                            'recommendation': 'Retener stock si es posible o buscar mercados alternativos',
+                            'priority': 'medium'
+                        })
+                    elif 5 < variation <= 10:
+                        alerts.append({
+                            'type': 'OPPORTUNITY',
+                            'product': product_name,
+                            'message': f'Precio favorable.',
+                            'variation': variation,
+                            'recommendation': 'Considerar venta en corto plazo',
+                            'priority': 'low'
+                        })
         
         return alerts
     

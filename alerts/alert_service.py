@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from django.utils import timezone
+from django.db import models
 from .models import Alert
 from weather.weather_service import WeatherService
 from market_analysis.market_service import MarketAnalysisService
@@ -73,16 +74,107 @@ class AlertService:
             for alert in price_alerts:
                 severity = 'HIGH' if alert['priority'] == 'high' else 'MEDIUM'
                 
+                # Mensaje más específico con detalles de precio
+                product_name = alert['product']
+                variation = alert['variation']
+                
+                # Crear mensaje detallado
+                if variation > 0:
+                    price_trend = f"subió +{variation:.1f}%"
+                    emoji = "📈"
+                else:
+                    price_trend = f"bajó {variation:.1f}%"
+                    emoji = "📉"
+                
+                detailed_message = f"{emoji} El precio de {product_name} {price_trend}. {alert['recommendation']}"
+                
                 alerts.append({
                     'type': 'PRICE',
                     'severity': severity,
-                    'title': f"{alert['product']} - {alert['message']}",
-                    'message': alert['recommendation'],
-                    'data': {'product': alert['product'], 'variation': alert['variation']}
+                    'title': f"{product_name} - {alert['message']}",
+                    'message': detailed_message,
+                    'data': {
+                        'product': product_name, 
+                        'variation': variation,
+                        'trend': 'up' if variation > 0 else 'down'
+                    }
                 })
         
         except Exception as e:
             print(f"Error checking price alerts: {e}")
+        
+        return alerts
+    
+    def check_stock_alerts(self):
+        """Verifica productos con stock bajo"""
+        alerts = []
+        
+        try:
+            from inventory.models import InventoryItem
+            
+            # Obtener items con stock bajo
+            low_stock_items = InventoryItem.objects.filter(
+                organization=self.organization,
+                current_stock__lte=models.F('minimum_stock'),
+                current_stock__gt=0
+            )
+            
+            # Agrupar por severidad
+            critical_items = []
+            warning_items = []
+            
+            for item in low_stock_items:
+                stock_percentage = (item.current_stock / item.minimum_stock * 100) if item.minimum_stock > 0 else 0
+                
+                if stock_percentage <= 25:  # Stock crítico (25% o menos del mínimo)
+                    critical_items.append(item)
+                else:
+                    warning_items.append(item)
+            
+            # Crear alerta para items críticos
+            if critical_items:
+                if len(critical_items) == 1:
+                    item = critical_items[0]
+                    message = f"🔴 Stock crítico: {item.name} solo tiene {float(item.current_stock)} {item.unit_of_measure} disponibles (mínimo: {float(item.minimum_stock)})"
+                else:
+                    products_list = ", ".join([f"{item.name} ({float(item.current_stock)} {item.unit_of_measure})" for item in critical_items[:3]])
+                    if len(critical_items) > 3:
+                        products_list += f" y {len(critical_items) - 3} más"
+                    message = f"🔴 {len(critical_items)} productos en stock crítico: {products_list}. Reabastezca urgentemente."
+                
+                alerts.append({
+                    'type': 'STOCK',
+                    'severity': 'CRITICAL',
+                    'title': 'Stock Crítico',
+                    'message': message,
+                    'data': {
+                        'items': [{'id': item.id, 'name': item.name, 'stock': float(item.current_stock), 'min': float(item.minimum_stock)} for item in critical_items]
+                    }
+                })
+            
+            # Crear alerta para items con advertencia
+            if warning_items:
+                if len(warning_items) == 1:
+                    item = warning_items[0]
+                    message = f"⚠️ Stock bajo: {item.name} tiene {float(item.current_stock)} {item.unit_of_measure} (mínimo: {float(item.minimum_stock)}). Considere reabastecer pronto."
+                else:
+                    products_list = ", ".join([f"{item.name} ({float(item.current_stock)} {item.unit_of_measure})" for item in warning_items[:3]])
+                    if len(warning_items) > 3:
+                        products_list += f" y {len(warning_items) - 3} más"
+                    message = f"⚠️ {len(warning_items)} productos con stock bajo: {products_list}. Planifique reabastecimiento."
+                
+                alerts.append({
+                    'type': 'STOCK',
+                    'severity': 'MEDIUM',
+                    'title': 'Stock Bajo',
+                    'message': message,
+                    'data': {
+                        'items': [{'id': item.id, 'name': item.name, 'stock': float(item.current_stock), 'min': float(item.minimum_stock)} for item in warning_items]
+                    }
+                })
+        
+        except Exception as e:
+            print(f"Error checking stock alerts: {e}")
         
         return alerts
     
@@ -125,8 +217,9 @@ class AlertService:
         all_alerts = []
         
         # Recopilar alertas
-        all_alerts.extend(self.check_weather_alerts())
+        all_alerts.extend(self.check_stock_alerts())  # Primero stock (más importante)
         all_alerts.extend(self.check_price_alerts())
+        all_alerts.extend(self.check_weather_alerts())
         all_alerts.extend(self.check_harvest_alerts())
         
         # Guardar en BD (evitar duplicados)
